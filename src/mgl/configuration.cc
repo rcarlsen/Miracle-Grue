@@ -357,6 +357,10 @@ void loadPatherConfigFromFile(const Configuration& config,
 			config["directionWeight"], 
 			"directionWeight", 
 			patherCfg.directionWeight);
+        patherCfg.raftLayers = uintCheck(
+			config["raftLayers"], 
+			"raftLayers", 
+			patherCfg.raftLayers);
 }
 
 

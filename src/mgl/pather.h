@@ -28,10 +28,12 @@ public:
 	PatherConfig() 
 			: doGraphOptimization(true), 
 			coarseness(0.05), 
-			directionWeight(1.0){}
+			directionWeight(1.0), 
+                        raftLayers(0){}
 	bool doGraphOptimization;
 	Scalar coarseness;
 	Scalar directionWeight;
+        unsigned int raftLayers;
 };
 
 typedef std::vector<LoopList> InsetVector; // TODO: make this a smarter object
