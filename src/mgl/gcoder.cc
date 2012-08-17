@@ -411,6 +411,48 @@ void GCoder::calcInSetExtrusion(const LayerPaths& layerpaths,
     extrusionParams.feedrate *= gcoderCfg.gantryCfg.get_scaling_factor();
 }
 
+void GCoder::calcExtrusion(unsigned int extruderId, 
+        unsigned int sliceId, 
+        const PathLabel& label, 
+        Extrusion& extrusionParams) const {
+    string profileName;
+    const Extruder& currentExtruder = gcoderCfg.extruders[extruderId];
+    if(sliceId == 0) {
+        profileName = currentExtruder.firstLayerExtrusionProfile;
+    } else if(label.isSupport()) {
+        profileName = currentExtruder.supportExtrusionProfile;
+    } else if(label.isConnection()) {
+        profileName = currentExtruder.supportExtrusionProfile;
+    } else if(label.isInset()) {
+        if(label.myValue == 
+                LayerPaths::Layer::ExtruderLayer::OUTLINE_LABEL_VALUE) {
+            profileName = currentExtruder.outlinesExtrusionProfile;
+        } else {
+            profileName = currentExtruder.insetsExtrusionProfile;
+        }
+    } else if(label.isOutline()) {
+        profileName = currentExtruder.outlinesExtrusionProfile;
+    } else {
+        profileName = currentExtruder.infillsExtrusionProfile;
+    }
+    loadExtrusion(profileName, extrusionParams);
+}
+void GCoder::loadExtrusion(const std::string& profileName, 
+        Extrusion& extrusionParams) const {
+    const std::map<std::string, Extrusion>::const_iterator it =
+            gcoderCfg.extrusionProfiles.find(profileName);
+    if (it == gcoderCfg.extrusionProfiles.end()) {
+        //		Log::severe() << "Failed to find extrusion profile <name>" << 
+        //				profileName  << "</name>" << endl;
+        GcoderException mixup((string("Failed to find extrusion profile ") +
+                profileName).c_str());
+        throw mixup;
+    } else {
+        extrusionParams = it->second;
+    }
+    extrusionParams.feedrate *= gcoderCfg.gantryCfg.get_scaling_factor();
+}
+
 void GCoder::writeGcodeFile(LayerPaths& layerpaths,
         const LayerMeasure& layerMeasure,
         std::ostream& gout,

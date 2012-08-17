@@ -174,6 +174,12 @@ public:
             unsigned int extruderId,
             LayerPaths::const_layer_iterator layerId,
             Extrusion& extrusionParams) const;
+    void calcExtrusion(unsigned int extruderId, 
+            unsigned int sliceId, 
+            const PathLabel& label, 
+            Extrusion& extrusionParams) const;
+    void loadExtrusion(const std::string& profileName, 
+            Extrusion& extrusionParams) const;
 
     ///  returns extrusionParams set based on the extruder id, and where you
     /// are in the model
