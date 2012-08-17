@@ -167,6 +167,9 @@ public:
     void calcOutlineExtrusion(unsigned int extruderId,
             unsigned int sliceId,
             Extrusion& extrusionParams) const;
+    void calcSupportExtrusion(unsigned int extruderId,
+            unsigned int sliceId,
+            Extrusion& extrusionParams) const;
     void calcInfillExtrusion(const LayerPaths& layerpaths,
             unsigned int extruderId,
             LayerPaths::const_layer_iterator layerId,
@@ -320,7 +323,7 @@ const LABELEDPATHS<LabeledOpenPath, ALLOC>& labeledPaths) {
             ss << "(outline path, length: " << currentLP.myPath.size()
                     << ")" << std::endl;
         } else if (currentLP.myLabel.isSupport()) {
-            calcInfillExtrusion(extruder.id, layerSequence, extrusion);
+            calcSupportExtrusion(extruder.id, layerSequence, extrusion);
             ss << "(support path, length: " << currentLP.myPath.size()
                     << ")" << std::endl;
         } else if (currentLP.myLabel.isConnection()) {

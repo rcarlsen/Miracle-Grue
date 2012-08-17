@@ -294,7 +294,30 @@ void GCoder::calcOutlineExtrusion(unsigned int extruderId,
     extrusionParams.feedrate *= gcoderCfg.gantryCfg.get_scaling_factor();
 }
 
-void GCoder::calcInfillExtrusion(unsigned int extruderId, unsigned int sliceId, Extrusion &extrusion) const {
+void GCoder::calcSupportExtrusion(unsigned int extruderId, 
+        unsigned int sliceId, Extrusion& extrusionParams) const {
+    string profileName;
+    if (sliceId == 0) {
+        profileName = gcoderCfg.extruders[extruderId].firstLayerExtrusionProfile;
+    } else {
+        profileName = gcoderCfg.extruders[extruderId].supportExtrusionProfile;
+    }
+    const std::map<std::string, Extrusion>::const_iterator it =
+            gcoderCfg.extrusionProfiles.find(profileName);
+    if (it == gcoderCfg.extrusionProfiles.end()) {
+        //		Log::severe() << "Failed to find extrusion profile <name>" << 
+        //		profileName  << "</name>" << endl;
+        GcoderException mixup((string("Failed to find extrusion profile ") +
+                profileName).c_str());
+        throw mixup;
+    } else {
+        extrusionParams = it->second;
+    }
+    extrusionParams.feedrate *= gcoderCfg.gantryCfg.get_scaling_factor();
+}
+
+void GCoder::calcInfillExtrusion(unsigned int extruderId, 
+        unsigned int sliceId, Extrusion &extrusion) const {
     string profileName;
     if (sliceId == 0) {
         profileName = gcoderCfg.extruders[extruderId].firstLayerExtrusionProfile;
