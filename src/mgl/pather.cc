@@ -41,7 +41,7 @@ void Pather::generatePaths(const ExtruderConfig &extruderCfg,
 		lastSliceIdx = (size_t) slastSliceIdx;
 	}
 
-	bool direction = false;
+	bool direction = true;
 	unsigned int currentSlice = 0;
 
 	initProgress("Path generation", skeleton.size());
@@ -52,8 +52,14 @@ void Pather::generatePaths(const ExtruderConfig &extruderCfg,
 
 		if (currentSlice < firstSliceIdx) continue;
 		if (currentSlice > lastSliceIdx) break;
-
-		direction = !direction;
+                if(patherCfg.doRaft && currentSlice>1 && 
+                        currentSlice < patherCfg.raftLayers) {
+                    //don't flip direction
+                    //std::cout << "DIRECTION SAME AS " << direction << std::endl;
+                } else {
+                    direction = !direction;
+                    //std::cout << "DIRECTION FLIP AS " << direction << std::endl;
+                }
 		const layer_measure_index_t layerMeasureId =
 				layerRegions->layerMeasureId;
 

@@ -357,10 +357,13 @@ void loadPatherConfigFromFile(const Configuration& config,
 			config["directionWeight"], 
 			"directionWeight", 
 			patherCfg.directionWeight);
-        patherCfg.raftLayers = uintCheck(
-			config["raftLayers"], 
-			"raftLayers", 
-			patherCfg.raftLayers);
+        patherCfg.doRaft = boolCheck(config["doRaft"], "doRaft");
+        if(patherCfg.doRaft) {
+            patherCfg.raftLayers = uintCheck(
+                            config["raftLayers"], 
+                            "raftLayers", 
+                            patherCfg.raftLayers);
+        }
 }
 
 

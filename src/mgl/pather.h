@@ -29,10 +29,12 @@ public:
 			: doGraphOptimization(true), 
 			coarseness(0.05), 
 			directionWeight(1.0), 
+                        doRaft(false), 
                         raftLayers(0){}
 	bool doGraphOptimization;
 	Scalar coarseness;
 	Scalar directionWeight;
+        bool doRaft;
         unsigned int raftLayers;
 };
 
