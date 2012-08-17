@@ -217,34 +217,6 @@ public:
 private:
 
     void writeGCodeConfig(std::ostream & ss, const char* filename) const;
-    //    void writeMachineInitialization(std::ostream & ss) const;
-    //    void writePlatformInitialization(std::ostream & ss) const;
-    //    void writeExtrudersInitialization(std::ostream & ss) const;
-    //    void writeHomingSequence(std::ostream & ss);
-    //    void writeWarmupSequence(std::ostream & ss);
-    //    void writeAnchor(std::ostream & ss);
-    void writeInfills(std::ostream& ss,
-            Scalar z, Scalar h, Scalar w,
-            size_t sliceId,
-            const Extruder& extruder,
-            const LayerPaths::Layer::ExtruderLayer& paths);
-    void writeSupport(std::ostream& ss,
-            Scalar z, Scalar h, Scalar w,
-            size_t sliceId,
-            const Extruder& extruder,
-            const LayerPaths::Layer::ExtruderLayer& paths);
-    void writeInsets(std::ostream& ss,
-            Scalar z, Scalar h, Scalar w,
-            size_t sliceId,
-            const Extruder& extruder,
-            const LayerPaths& layerpaths,
-            LayerPaths::layer_iterator layerId,
-            const LayerPaths::Layer::ExtruderLayer& paths);
-    void writeOutlines(std::ostream& ss,
-            Scalar z, Scalar h, Scalar w,
-            size_t sliceId,
-            const Extruder& extruder,
-            const LayerPaths::Layer::ExtruderLayer& paths);
     template <typename PATH>
     void writePath(std::ostream& ss,
             Scalar z, Scalar h, Scalar w,
@@ -253,10 +225,10 @@ private:
             const PATH& path);
     template <template <class, class> class LABELEDPATHS, class ALLOC>
     void writePaths(std::ostream& ss,
-    Scalar z, Scalar h, Scalar w,
-    size_t layerSequence,
-    const Extruder& extruder,
-    const LABELEDPATHS<LabeledOpenPath, ALLOC>& labeledPaths);
+            Scalar z, Scalar h, Scalar w,
+            size_t layerSequence,
+            const Extruder& extruder,
+            const LABELEDPATHS<LabeledOpenPath, ALLOC>& labeledPaths);
 
     libthing::Vector2 startPoint(const SliceData &sliceData);
     // void writeWipeExtruder(std::ostream& ss, int extruderId) const {};
