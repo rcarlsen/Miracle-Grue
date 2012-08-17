@@ -243,6 +243,9 @@ void loadGCoderConfigFromFile(const Configuration& conf,
         extruder.outlinesExtrusionProfile =
                 stringCheck(value["outlinesExtrusionProfile"],
                 (prefix + "outlinesExtrusionProfile").c_str());
+        extruder.supportExtrusionProfile =
+                stringCheck(value["supportExtrusionProfile"],
+                (prefix + "supportExtrusionProfile").c_str());
 
         extruder.id = i;
         extruder.code = 'A' + i;

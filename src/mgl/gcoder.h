@@ -76,6 +76,7 @@ public:
     std::string insetsExtrusionProfile;
     std::string infillsExtrusionProfile;
     std::string outlinesExtrusionProfile;
+    std::string supportExtrusionProfile;
 };
 
 class GCoderConfig {
