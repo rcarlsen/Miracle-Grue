@@ -296,34 +296,20 @@ const LABELEDPATHS<LabeledOpenPath, ALLOC>& labeledPaths) {
                 didLastPath = false;
                 continue;
             }
-            calcOutlineExtrusion(extruder.id, layerSequence,
-                    extrusion);
             ss << "(outline path, length: " << currentLP.myPath.size()
                     << ")" << std::endl;
         } else if (currentLP.myLabel.isSupport()) {
-            calcSupportExtrusion(extruder.id, layerSequence, extrusion);
             ss << "(support path, length: " << currentLP.myPath.size()
                     << ")" << std::endl;
         } else if (currentLP.myLabel.isConnection()) {
             if (!didLastPath)
                 continue;
-            calcInfillExtrusion(extruder.id, layerSequence, extrusion);
             ss << "(connection path, length: " << currentLP.myPath.size()
                     << ")" << std::endl;
         } else if (currentLP.myLabel.isInset()) {
             if (!gcoderCfg.doInsets) {
                 didLastPath = false;
                 continue;
-            }
-            if (currentLP.myLabel.myValue ==
-                    LayerPaths::Layer::ExtruderLayer::OUTLINE_LABEL_VALUE) {
-                //this is an outline
-                calcOutlineExtrusion(extruder.id, layerSequence,
-                        extrusion);
-            } else {
-                //this is a regular inset
-                calcInSetExtrusion(extruder.id, layerSequence,
-                        currentLP.myLabel.myValue, -1, extrusion);
             }
             ss << "(inset path, length: " << currentLP.myPath.size()
                     << ")" << std::endl;
@@ -332,7 +318,6 @@ const LABELEDPATHS<LabeledOpenPath, ALLOC>& labeledPaths) {
                 didLastPath = false;
                 continue;
             }
-            calcInfillExtrusion(extruder.id, layerSequence, extrusion);
             ss << "(infill path, length: " << currentLP.myPath.size()
                     << ")" << std::endl;
         } else {
@@ -340,7 +325,10 @@ const LABELEDPATHS<LabeledOpenPath, ALLOC>& labeledPaths) {
             throw mixup;
         }
         didLastPath = true;
-        writePath(ss, z, currentH, currentW, extruder, extrusion, currentLP.myPath);
+        calcExtrusion(extruder.id, layerSequence, currentLP.myLabel, 
+                extrusion);
+        writePath(ss, z, currentH, currentW, extruder, extrusion, 
+                currentLP.myPath);
     }
     gantry.snort(ss, extruder, fluidstrusion);
     ss << std::endl << std::endl;
