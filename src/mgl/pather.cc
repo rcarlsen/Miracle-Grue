@@ -19,282 +19,295 @@
 namespace mgl {
 using namespace std;
 
-Pather::Pather(const PatherConfig& pCfg, ProgressBar* progress) 
-		: Progressive(progress), patherCfg(pCfg) {}
+Pather::Pather(const PatherConfig& pCfg, ProgressBar* progress)
+: Progressive(progress), patherCfg(pCfg) {
+}
 
 void Pather::generatePaths(const ExtruderConfig &extruderCfg,
-		const RegionList &skeleton,
-		const LayerMeasure &layerMeasure,
-		const Grid &grid,
-		LayerPaths &layerpaths,
-		int sfirstSliceIdx, // =-1
-		int slastSliceIdx) //
+        const RegionList &skeleton,
+        const LayerMeasure &layerMeasure,
+        const Grid &grid,
+        LayerPaths &layerpaths,
+        int sfirstSliceIdx, // =-1
+        int slastSliceIdx) //
 {
-	size_t firstSliceIdx = 0;
-	size_t lastSliceIdx = INT_MAX;
+    size_t firstSliceIdx = 0;
+    size_t lastSliceIdx = INT_MAX;
 
-	if (sfirstSliceIdx > 0) {
-		firstSliceIdx = (size_t) sfirstSliceIdx;
-	}
+    if (sfirstSliceIdx > 0) {
+        firstSliceIdx = (size_t) sfirstSliceIdx;
+    }
 
-	if (slastSliceIdx > 0) {
-		lastSliceIdx = (size_t) slastSliceIdx;
-	}
+    if (slastSliceIdx > 0) {
+        lastSliceIdx = (size_t) slastSliceIdx;
+    }
 
-	bool direction = true;
-	unsigned int currentSlice = 0;
+    bool direction = true;
+    unsigned int currentSlice = 0;
 
-	initProgress("Path generation", skeleton.size());
+    initProgress("Path generation", skeleton.size());
 
-	for (RegionList::const_iterator layerRegions = skeleton.begin();
-			layerRegions != skeleton.end(); ++layerRegions) {
-		tick();
+    for (RegionList::const_iterator layerRegions = skeleton.begin();
+            layerRegions != skeleton.end(); ++layerRegions) {
+        tick();
 
-		if (currentSlice < firstSliceIdx) continue;
-		if (currentSlice > lastSliceIdx) break;
-                if(patherCfg.doRaft && currentSlice>1 && 
-                        currentSlice < patherCfg.raftLayers) {
-                    //don't flip direction
-                    //std::cout << "DIRECTION SAME AS " << direction << std::endl;
-                } else {
-                    direction = !direction;
-                    //std::cout << "DIRECTION FLIP AS " << direction << std::endl;
-                }
-		const layer_measure_index_t layerMeasureId =
-				layerRegions->layerMeasureId;
+        if (currentSlice < firstSliceIdx) continue;
+        if (currentSlice > lastSliceIdx) break;
+        if (patherCfg.doRaft && currentSlice > 1 &&
+                currentSlice < patherCfg.raftLayers) {
+            //don't flip direction
+            //std::cout << "DIRECTION SAME AS " << direction << std::endl;
+        } else {
+            direction = !direction;
+            //std::cout << "DIRECTION FLIP AS " << direction << std::endl;
+        }
+        const layer_measure_index_t layerMeasureId =
+                layerRegions->layerMeasureId;
 
-		//adding these should be handled in gcoder
-		const Scalar z = layerMeasure.getLayerPosition(layerMeasureId);
-		const Scalar h = layerMeasure.getLayerThickness(layerMeasureId);
-		const Scalar w = layerMeasure.getLayerWidth(layerMeasureId);
+        //adding these should be handled in gcoder
+        const Scalar z = layerMeasure.getLayerPosition(layerMeasureId);
+        const Scalar h = layerMeasure.getLayerThickness(layerMeasureId);
+        const Scalar w = layerMeasure.getLayerWidth(layerMeasureId);
 
-		layerpaths.push_back(LayerPaths::Layer(z, h, w, layerMeasureId));
+        layerpaths.push_back(LayerPaths::Layer(z, h, w, layerMeasureId));
 
-		LayerPaths::Layer& lp_layer = layerpaths.back();
+        LayerPaths::Layer& lp_layer = layerpaths.back();
+        if(patherCfg.doRaft) {
+            if(currentSlice < patherCfg.raftLayers) {
+                lp_layer.label = LayerLabel(LayerLabel::TYP_RAFT, 
+                        currentSlice);
+            } else {
+                lp_layer.label = LayerLabel(LayerLabel::TYP_MODEL, 
+                        currentSlice - patherCfg.raftLayers);
+            }
+        } else {
+            lp_layer.label = LayerLabel(LayerLabel::TYP_MODEL, 
+                        currentSlice);
+        }
 
-		//TODO: this only handles the case where the user specifies the extruder
-		// it does not handle a dualstrusion print
-		lp_layer.extruders.push_back(
-				LayerPaths::Layer::ExtruderLayer(extruderCfg.defaultExtruder));
-		LayerPaths::Layer::ExtruderLayer& extruderlayer =
-				lp_layer.extruders.back();
-		
-		
-		pather_optimizer preoptimizer;
-		pather_optimizer_graph optimizer;
-		//optimizer.linkPaths = false;
+        //TODO: this only handles the case where the user specifies the extruder
+        // it does not handle a dualstrusion print
+        lp_layer.extruders.push_back(
+                LayerPaths::Layer::ExtruderLayer(extruderCfg.defaultExtruder));
+        LayerPaths::Layer::ExtruderLayer& extruderlayer =
+                lp_layer.extruders.back();
 
-		const std::list<LoopList>& insetLoops = layerRegions->insetLoops;
-		
-		preoptimizer.addPaths(layerRegions->outlines, 
-				PathLabel(PathLabel::TYP_OUTLINE, PathLabel::OWN_MODEL));
-		preoptimizer.addPaths(layerRegions->supportLoops, 
-				PathLabel(PathLabel::TYP_OUTLINE, PathLabel::OWN_SUPPORT));
-		preoptimizer.optimize(extruderlayer.outlinePaths);
-		
-		preoptimizer.addBoundaries(layerRegions->outlines);	
-		
-		int currentShell = LayerPaths::Layer::ExtruderLayer::OUTLINE_LABEL_VALUE;
-		for(std::list<LoopList>::const_iterator listIter = insetLoops.begin(); 
-				listIter != insetLoops.end(); 
-				++listIter) {
-			preoptimizer.addPaths(*listIter, 
-					PathLabel(PathLabel::TYP_INSET, 
-					PathLabel::OWN_MODEL, currentShell));
-			++currentShell;
-		}
 
-		const GridRanges& infillRanges = layerRegions->infill;
-		const GridRanges& supportRanges = layerRegions->support;
+        pather_optimizer preoptimizer;
+        pather_optimizer_graph optimizer;
+        //optimizer.linkPaths = false;
 
-		const std::vector<Scalar>& values = 
-				!direction ? grid.getXValues() : grid.getYValues();
-		axis_e axis = direction ? X_AXIS : Y_AXIS;
-		
-		
-		OpenPathList infillPaths;
-		OpenPathList supportPaths;
-		grid.gridRangesToOpenPaths(
-				direction ? infillRanges.xRays : infillRanges.yRays,  
-				values, 
-				axis, 
-				infillPaths);
-		
-		std::list<LabeledOpenPath> preoptimized;
-		std::list<LabeledOpenPath> presupport;
-		
-		grid.gridRangesToOpenPaths(
-				direction ? supportRanges.xRays : supportRanges.yRays, 
-				values, 
-				axis, 
-				supportPaths);
-		
-		preoptimizer.addPaths(infillPaths, PathLabel(PathLabel::TYP_INFILL, 
-				PathLabel::OWN_MODEL, 1));
-		
-		preoptimizer.optimize(preoptimized);
-		
-		preoptimizer.clearBoundaries();
-		preoptimizer.clearPaths();
-		
-		preoptimizer.addBoundaries(layerRegions->supportLoops);
-		
-		preoptimizer.addPaths(supportPaths, PathLabel(PathLabel::TYP_INFILL, 
-				PathLabel::OWN_SUPPORT, 0));
-		
-		preoptimizer.optimize(presupport);
-		
-		if(patherCfg.doGraphOptimization) {
-			//run graph optimizations
-			std::list<LabeledOpenPath> resultModel;
-			std::list<LabeledOpenPath> resultSupport;
-                        if(preoptimized.size() > 3) {
-                            optimizer.addBoundaries(layerRegions->outlines);
-                            optimizer.addPaths(preoptimized);
-                            optimizer.optimize(resultModel);
-                            optimizer.clearPaths();
-                            optimizer.clearBoundaries();
-                        } else {
-                            resultModel.insert(resultModel.end(), 
-                                    preoptimized.begin(), preoptimized.end());
-                        }
-                        if(presupport.size() > 3) {
-                            optimizer.addBoundaries(layerRegions->supportLoops);
-                            optimizer.addPaths(presupport);
-                            optimizer.optimize(resultSupport);
-                        } else {
-                            resultSupport.insert(resultSupport.end(), 
-                                    presupport.begin(), presupport.end());
-                        }
-			
-			extruderlayer.paths.insert(extruderlayer.paths.end(), 
-					resultModel.begin(), resultModel.end());
-			
-			extruderlayer.paths.insert(extruderlayer.paths.end(), 
-					resultSupport.begin(), resultSupport.end());
-		} else {
-			//don't run graph optimizations
-			//use naive result instead
-			extruderlayer.paths.insert(extruderlayer.paths.end(), 
-					preoptimized.begin(), preoptimized.end());
-			extruderlayer.paths.insert(extruderlayer.paths.end(), 
-					presupport.begin(), presupport.end());
-		}
-		directionalCoarsenessCleanup(extruderlayer.paths);
+        const std::list<LoopList>& insetLoops = layerRegions->insetLoops;
 
-//		cout << currentSlice << ": \t" << layerMeasure.getLayerPosition(
-//				layerRegions->layerMeasureId) << endl;
+        preoptimizer.addPaths(layerRegions->outlines,
+                PathLabel(PathLabel::TYP_OUTLINE, PathLabel::OWN_MODEL));
+        preoptimizer.addPaths(layerRegions->supportLoops,
+                PathLabel(PathLabel::TYP_OUTLINE, PathLabel::OWN_SUPPORT));
+        preoptimizer.optimize(extruderlayer.outlinePaths);
 
-		++currentSlice;
-	}
+        preoptimizer.addBoundaries(layerRegions->outlines);
+
+        int currentShell = LayerPaths::Layer::ExtruderLayer::OUTLINE_LABEL_VALUE;
+        for (std::list<LoopList>::const_iterator listIter = insetLoops.begin();
+                listIter != insetLoops.end();
+                ++listIter) {
+            preoptimizer.addPaths(*listIter,
+                    PathLabel(PathLabel::TYP_INSET,
+                    PathLabel::OWN_MODEL, currentShell));
+            ++currentShell;
+        }
+
+        const GridRanges& infillRanges = layerRegions->infill;
+        const GridRanges& supportRanges = layerRegions->support;
+
+        const std::vector<Scalar>& values =
+                !direction ? grid.getXValues() : grid.getYValues();
+        axis_e axis = direction ? X_AXIS : Y_AXIS;
+
+
+        OpenPathList infillPaths;
+        OpenPathList supportPaths;
+        grid.gridRangesToOpenPaths(
+                direction ? infillRanges.xRays : infillRanges.yRays,
+                values,
+                axis,
+                infillPaths);
+
+        std::list<LabeledOpenPath> preoptimized;
+        std::list<LabeledOpenPath> presupport;
+
+        grid.gridRangesToOpenPaths(
+                direction ? supportRanges.xRays : supportRanges.yRays,
+                values,
+                axis,
+                supportPaths);
+
+        preoptimizer.addPaths(infillPaths, PathLabel(PathLabel::TYP_INFILL,
+                PathLabel::OWN_MODEL, 1));
+
+        preoptimizer.optimize(preoptimized);
+
+        preoptimizer.clearBoundaries();
+        preoptimizer.clearPaths();
+
+        preoptimizer.addBoundaries(layerRegions->supportLoops);
+
+        preoptimizer.addPaths(supportPaths, PathLabel(PathLabel::TYP_INFILL,
+                PathLabel::OWN_SUPPORT, 0));
+
+        preoptimizer.optimize(presupport);
+
+        if (patherCfg.doGraphOptimization) {
+            //run graph optimizations
+            std::list<LabeledOpenPath> resultModel;
+            std::list<LabeledOpenPath> resultSupport;
+            if (preoptimized.size() > 3) {
+                optimizer.addBoundaries(layerRegions->outlines);
+                optimizer.addPaths(preoptimized);
+                optimizer.optimize(resultModel);
+                optimizer.clearPaths();
+                optimizer.clearBoundaries();
+            } else {
+                resultModel.insert(resultModel.end(),
+                        preoptimized.begin(), preoptimized.end());
+            }
+            if (presupport.size() > 3) {
+                optimizer.addBoundaries(layerRegions->supportLoops);
+                optimizer.addPaths(presupport);
+                optimizer.optimize(resultSupport);
+            } else {
+                resultSupport.insert(resultSupport.end(),
+                        presupport.begin(), presupport.end());
+            }
+
+            extruderlayer.paths.insert(extruderlayer.paths.end(),
+                    resultModel.begin(), resultModel.end());
+
+            extruderlayer.paths.insert(extruderlayer.paths.end(),
+                    resultSupport.begin(), resultSupport.end());
+        } else {
+            //don't run graph optimizations
+            //use naive result instead
+            extruderlayer.paths.insert(extruderlayer.paths.end(),
+                    preoptimized.begin(), preoptimized.end());
+            extruderlayer.paths.insert(extruderlayer.paths.end(),
+                    presupport.begin(), presupport.end());
+        }
+        directionalCoarsenessCleanup(extruderlayer.paths);
+
+        //		cout << currentSlice << ": \t" << layerMeasure.getLayerPosition(
+        //				layerRegions->layerMeasureId) << endl;
+
+        ++currentSlice;
+    }
 }
 
 void Pather::outlines(const LoopList& outline_loops,
-		LoopPathList &boundary_paths) {
-	//using a indeterminate start point for the beginning of the LoopPathList
-	//as that's what the old Polygon logic did
+        LoopPathList &boundary_paths) {
+    //using a indeterminate start point for the beginning of the LoopPathList
+    //as that's what the old Polygon logic did
 
-	for (LoopList::const_iterator i = outline_loops.begin();
-			i != outline_loops.end(); ++i) {
-		boundary_paths.push_back(LoopPath(*i, i->clockwise(),
-				i->counterClockwise()));
-	}
+    for (LoopList::const_iterator i = outline_loops.begin();
+            i != outline_loops.end(); ++i) {
+        boundary_paths.push_back(LoopPath(*i, i->clockwise(),
+                i->counterClockwise()));
+    }
 }
 
 void Pather::insets(const list<LoopList>& inset_loops,
-		list<LoopPathList> &inset_paths) {
-	std::list<const Loop*> flat_insets;
-	for (list<LoopList>::const_iterator i = inset_loops.begin();
-			i != inset_loops.end(); ++i) {
+        list<LoopPathList> &inset_paths) {
+    std::list<const Loop*> flat_insets;
+    for (list<LoopList>::const_iterator i = inset_loops.begin();
+            i != inset_loops.end(); ++i) {
 
-//		inset_paths.push_back(LoopPathList());
-//		LoopPathList& lp_list = inset_paths.back();
+        //		inset_paths.push_back(LoopPathList());
+        //		LoopPathList& lp_list = inset_paths.back();
 
-		for (LoopList::const_iterator j = i->begin(); j != i->end(); ++j) {
-//			lp_list.push_back(LoopPath(*j, j->clockwise(),
-//					j->counterClockwise()));
-			flat_insets.push_back(&*j);
-		}
-	}
-	inset_paths.push_back(LoopPathList());
-	LoopPathList& onlyList = inset_paths.back();
-	while(!flat_insets.empty()) {
-		if(onlyList.empty()) {
-			onlyList.push_back(LoopPath(*flat_insets.front(), 
-					flat_insets.front()->clockwise(), 
-					flat_insets.front()->counterClockwise(
-					*(flat_insets.front()->clockwise()))));
-			flat_insets.pop_front();
-		} else {
-			PointType current_exit = *onlyList.back().fromEnd();
-			std::list<const Loop*>::iterator closestLoop = flat_insets.begin();
-			Loop::entry_iterator closestEntry = flat_insets.front()->entryBegin();
-			Scalar closestDistance = (closestEntry->getPoint() - 
-					current_exit).magnitude();
-			//find the closest entry
-			for(std::list<const Loop*>::iterator loopIter = flat_insets.begin(); 
-					loopIter != flat_insets.end(); 
-					++loopIter) {
-				for(Loop::entry_iterator entryIter = (*loopIter)->entryBegin(); 
-						entryIter != (*loopIter)->entryEnd(); 
-						++entryIter) {
-					Scalar distance = (entryIter->getPoint() - 
-							current_exit).magnitude();
-					if(distance < closestDistance) {
-						closestLoop = loopIter;
-						closestEntry = entryIter;
-						closestDistance = distance;
-					}
-				}
-			}
-			//add its loopPath
-			onlyList.push_back(LoopPath(*(*closestLoop), 
-					(*closestLoop)->clockwise(*closestEntry), 
-					(*closestLoop)->counterClockwise(*closestEntry)));
-			//remove from list
-			flat_insets.erase(closestLoop);
-		}
-	}
+        for (LoopList::const_iterator j = i->begin(); j != i->end(); ++j) {
+            //			lp_list.push_back(LoopPath(*j, j->clockwise(),
+            //					j->counterClockwise()));
+            flat_insets.push_back(&*j);
+        }
+    }
+    inset_paths.push_back(LoopPathList());
+    LoopPathList& onlyList = inset_paths.back();
+    while (!flat_insets.empty()) {
+        if (onlyList.empty()) {
+            onlyList.push_back(LoopPath(*flat_insets.front(),
+                    flat_insets.front()->clockwise(),
+                    flat_insets.front()->counterClockwise(
+                    *(flat_insets.front()->clockwise()))));
+            flat_insets.pop_front();
+        } else {
+            PointType current_exit = *onlyList.back().fromEnd();
+            std::list<const Loop*>::iterator closestLoop = flat_insets.begin();
+            Loop::entry_iterator closestEntry = flat_insets.front()->entryBegin();
+            Scalar closestDistance = (closestEntry->getPoint() -
+                    current_exit).magnitude();
+            //find the closest entry
+            for (std::list<const Loop*>::iterator loopIter = flat_insets.begin();
+                    loopIter != flat_insets.end();
+                    ++loopIter) {
+                for (Loop::entry_iterator entryIter = (*loopIter)->entryBegin();
+                        entryIter != (*loopIter)->entryEnd();
+                        ++entryIter) {
+                    Scalar distance = (entryIter->getPoint() -
+                            current_exit).magnitude();
+                    if (distance < closestDistance) {
+                        closestLoop = loopIter;
+                        closestEntry = entryIter;
+                        closestDistance = distance;
+                    }
+                }
+            }
+            //add its loopPath
+            onlyList.push_back(LoopPath(*(*closestLoop),
+                    (*closestLoop)->clockwise(*closestEntry),
+                    (*closestLoop)->counterClockwise(*closestEntry)));
+            //remove from list
+            flat_insets.erase(closestLoop);
+        }
+    }
 }
 
 void Pather::infills(const GridRanges &infillRanges,
-		const Grid &grid,
-		const LoopList &outlines,
-		const bool direction,
-		OpenPathList &infills) {
-	grid.pathsFromRanges(infillRanges, outlines, direction, infills);
+        const Grid &grid,
+        const LoopList &outlines,
+        const bool direction,
+        OpenPathList &infills) {
+    grid.pathsFromRanges(infillRanges, outlines, direction, infills);
 }
 
 void Pather::directionalCoarsenessCleanup(
-		LayerPaths::Layer::ExtruderLayer::LabeledPathList& labeledPaths){
-	typedef LayerPaths::Layer::ExtruderLayer::LabeledPathList Paths;
-	for(Paths::iterator iter = labeledPaths.begin(); 
-			iter != labeledPaths.end(); 
-			++iter) {
-		directionalCoarsenessCleanup(*iter);
-	}
+        LayerPaths::Layer::ExtruderLayer::LabeledPathList& labeledPaths) {
+    typedef LayerPaths::Layer::ExtruderLayer::LabeledPathList Paths;
+    for (Paths::iterator iter = labeledPaths.begin();
+            iter != labeledPaths.end();
+            ++iter) {
+        directionalCoarsenessCleanup(*iter);
+    }
 }
 
 void Pather::directionalCoarsenessCleanup(LabeledOpenPath& labeledPath) {
-	if(patherCfg.coarseness == 0)
-		return;
-	OpenPath& path = labeledPath.myPath;
-	if(path.size() < 3)
-		return;
-	OpenPath cleanPath;
-	OpenPath::iterator current;
-	current = path.fromStart();
-	//insert the first two points
-	cleanPath.appendPoint(*(current++));
-	cleanPath.appendPoint(*(current++));
-	Scalar cumulativeError = 0.0;
-	for(; current != path.end(); ++current) {
-		OpenPath::reverse_iterator last1 = cleanPath.fromEnd();
-		OpenPath::reverse_iterator last2 = cleanPath.fromEnd();
+    if (patherCfg.coarseness == 0)
+        return;
+    OpenPath& path = labeledPath.myPath;
+    if (path.size() < 3)
+        return;
+    OpenPath cleanPath;
+    OpenPath::iterator current;
+    current = path.fromStart();
+    //insert the first two points
+    cleanPath.appendPoint(*(current++));
+    cleanPath.appendPoint(*(current++));
+    Scalar cumulativeError = 0.0;
+    for (; current != path.end(); ++current) {
+        OpenPath::reverse_iterator last1 = cleanPath.fromEnd();
+        OpenPath::reverse_iterator last2 = cleanPath.fromEnd();
         PointType currentPoint = *current;
         PointType landingPoint = currentPoint;
-		++last2;
-		bool addPoint = true;
+        ++last2;
+        bool addPoint = true;
         try {
             PointType unit = PointType(*last1 - *last2).unit();
             Scalar component = (currentPoint - *last1).dotProduct(unit);
@@ -304,20 +317,20 @@ void Pather::directionalCoarsenessCleanup(LabeledOpenPath& labeledPath) {
             cumulativeError += deviation;
 
             addPoint = cumulativeError > patherCfg.coarseness;
-        } catch(libthing::Exception mixup) {
+        } catch (libthing::Exception mixup) {
             //we expect this to be something like a bad normalization
             Log::severe() << "ERROR: " << mixup.what() << std::endl;
         }
-		
-		if(addPoint) {
-			cleanPath.appendPoint(currentPoint);
-			cumulativeError = 0;
-		} else {
-			*last1 = landingPoint * (1.0 - patherCfg.directionWeight) + 
-					currentPoint * patherCfg.directionWeight;
-		}
-	}
-	path = cleanPath;
+
+        if (addPoint) {
+            cleanPath.appendPoint(currentPoint);
+            cumulativeError = 0;
+        } else {
+            *last1 = landingPoint * (1.0 - patherCfg.directionWeight) +
+                    currentPoint * patherCfg.directionWeight;
+        }
+    }
+    path = cleanPath;
 }
 
 
