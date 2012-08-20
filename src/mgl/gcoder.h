@@ -39,8 +39,7 @@ public:
 class Extrusion {
 public:
 
-    Extrusion() {
-    }
+    Extrusion() {    }
 
     Scalar crossSectionArea(Scalar height, Scalar width) const;
 
@@ -161,19 +160,19 @@ public:
 
     ///  returns extrusionParams set based on the extruder id, and where you
     /// are in the model
-    void calcInfillExtrusion(unsigned int extruderId,
-            unsigned int sliceId,
-            Extrusion &extrusionParams) const;
-    void calcOutlineExtrusion(unsigned int extruderId,
-            unsigned int sliceId,
-            Extrusion& extrusionParams) const;
-    void calcSupportExtrusion(unsigned int extruderId,
-            unsigned int sliceId,
-            Extrusion& extrusionParams) const;
-    void calcInfillExtrusion(const LayerPaths& layerpaths,
-            unsigned int extruderId,
-            LayerPaths::const_layer_iterator layerId,
-            Extrusion& extrusionParams) const;
+//    void calcInfillExtrusion(unsigned int extruderId,
+//            unsigned int sliceId,
+//            Extrusion &extrusionParams) const;
+//    void calcOutlineExtrusion(unsigned int extruderId,
+//            unsigned int sliceId,
+//            Extrusion& extrusionParams) const;
+//    void calcSupportExtrusion(unsigned int extruderId,
+//            unsigned int sliceId,
+//            Extrusion& extrusionParams) const;
+//    void calcInfillExtrusion(const LayerPaths& layerpaths,
+//            unsigned int extruderId,
+//            LayerPaths::const_layer_iterator layerId,
+//            Extrusion& extrusionParams) const;
     void calcExtrusion(unsigned int extruderId, 
             unsigned int sliceId, 
             const PathLabel& label, 
@@ -183,16 +182,16 @@ public:
 
     ///  returns extrusionParams set based on the extruder id, and where you
     /// are in the model
-    void calcInSetExtrusion(unsigned int extruderId,
-            unsigned int sliceId,
-            unsigned int insetId,
-            unsigned int insetCount,
-            Extrusion &extrusionParams) const;
-    void calcInSetExtrusion(const LayerPaths& layerpaths,
-            unsigned int extruderId,
-            LayerPaths::const_layer_iterator layerId,
-            LayerPaths::Layer::ExtruderLayer::const_inset_iterator insetId,
-            Extrusion& extrusionParams) const;
+//    void calcInSetExtrusion(unsigned int extruderId,
+//            unsigned int sliceId,
+//            unsigned int insetId,
+//            unsigned int insetCount,
+//            Extrusion &extrusionParams) const;
+//    void calcInSetExtrusion(const LayerPaths& layerpaths,
+//            unsigned int extruderId,
+//            LayerPaths::const_layer_iterator layerId,
+//            LayerPaths::Layer::ExtruderLayer::const_inset_iterator insetId,
+//            Extrusion& extrusionParams) const;
 
 
     /// Writes the start.gcode file, otherwise generates a
@@ -280,8 +279,7 @@ const Extruder& extruder,
 const LABELEDPATHS<LabeledOpenPath, ALLOC>& labeledPaths) {
     typedef typename LABELEDPATHS<LabeledOpenPath, ALLOC>::const_iterator
     const_iterator;
-    Extrusion fluidstrusion;
-    calcInfillExtrusion(extruder.id, layerSequence, fluidstrusion);
+    Extrusion fluidstrusion;    //this is uninitialized and unused!
     gantry.snort(ss, extruder, fluidstrusion);
     bool didLastPath = true;
     for (const_iterator iter = labeledPaths.begin();
