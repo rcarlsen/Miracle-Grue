@@ -374,7 +374,8 @@ void Regioner::floorForSlice(const GridRanges & currentSurface,
 	grid.trimGridRange(floor, roofLengthCutOff, flooring);
 }
 
-void Regioner::roofForSlice(const GridRanges & currentSurface, const GridRanges & surfaceAbove, const Grid & grid, GridRanges & roofing) {
+void Regioner::roofForSlice(const GridRanges & currentSurface, 
+        const GridRanges & surfaceAbove, const Grid & grid, GridRanges & roofing) {
 	GridRanges roof;
 	grid.gridRangeDifference(currentSurface, surfaceAbove, roof);
 	grid.trimGridRange(roof, roofLengthCutOff, roofing);
@@ -398,6 +399,15 @@ void Regioner::roofing(RegionList::iterator regionsBegin,
 		roofForSlice(currentSurface, surfaceAbove, grid, roof);
 
 		grid.trimGridRange(roof, roofLengthCutOff, roofing);
+        
+        const GridRanges & currentSupportSurface = current->supportSurface;
+		const GridRanges & surfaceSupportAbove = above->supportSurface;
+		GridRanges & supportRoofing = current->supportRoofing;
+        
+        GridRanges supportRoof;
+		roofForSlice(currentSupportSurface, surfaceSupportAbove, grid, supportRoof);
+
+		grid.trimGridRange(supportRoof, roofLengthCutOff, supportRoofing);
 
 		++current;
 		++above;
@@ -405,6 +415,7 @@ void Regioner::roofing(RegionList::iterator regionsBegin,
 
 	tick();
 	current->roofing = current->flatSurface;
+    current->supportRoofing = current->supportSurface;
 }
 
 void Regioner::flooring(RegionList::iterator regionsBegin,
@@ -516,10 +527,12 @@ void Regioner::infills(RegionList::iterator regionsBegin,
 			current != regionsEnd; ++current, ++layerSequence) {
 
 		const GridRanges &surface = current->flatSurface;
+        const GridRanges &supportSurface = current->supportSurface;
 		tick();
 
 		// Solids
 		GridRanges combinedSolid;
+        GridRanges combinedSupportSolid;
 
 		combinedSolid.xRays.resize(surface.xRays.size());
 		combinedSolid.yRays.resize(surface.yRays.size());
@@ -550,18 +563,25 @@ void Regioner::infills(RegionList::iterator regionsBegin,
 		for (RegionList::iterator roof = current;
 				roof <= lastRoof; ++roof) {
 			GridRanges multiRoof;
+            GridRanges multiSupportRoof;
 
 			grid.gridRangeUnion(combinedSolid, roof->roofing, multiRoof);
+            grid.gridRangeUnion(combinedSupportSolid, roof->supportRoofing, 
+                    multiSupportRoof);
 			combinedSolid = multiRoof;
+            combinedSupportSolid = multiSupportRoof;
 		}
 
 		// solid now contains the combination of combinedSolid regions from
 		// multiple slices. We need to extract the perimeter from it
 
 		grid.gridRangeIntersection(surface, combinedSolid, current->solid);
+        grid.gridRangeIntersection(supportSurface, 
+                combinedSupportSolid, current->supportSolid);
 
 		// TODO: move me to the slicer
 		GridRanges sparseInfill;
+        GridRanges sparseSupport;
 		size_t infillSkipCount = (int) (1 / regionerCfg.infillDensity) - 1;
 
 		grid.subSample(surface, infillSkipCount, sparseInfill);
@@ -573,10 +593,12 @@ void Regioner::infills(RegionList::iterator regionsBegin,
                     ? regionerCfg.raftDensity : regionerCfg.supportDensity;
             size_t skipCount = (int) (1 / density) - 1;
             grid.subSample(current->supportSurface, skipCount,
-                    current->support);
+                    sparseSupport);
         }
 
 		grid.gridRangeUnion(current->solid, sparseInfill, current->infill);
+        grid.gridRangeUnion(current->supportSolid, sparseSupport, 
+                current->support);
 	}
 
 }

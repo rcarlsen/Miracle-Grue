@@ -76,12 +76,17 @@ public:
 
 	GridRanges roofing;
 	GridRanges flooring;
+    
+    GridRanges supportRoofing;
 	GridRanges support;
 
 	GridRanges infill;
 
 	GridRanges solid;
 	GridRanges sparse;
+    
+    GridRanges supportSolid;
+    GridRanges supportSparse;
 
 	layer_measure_index_t layerMeasureId;
 };
