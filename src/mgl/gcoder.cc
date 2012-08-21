@@ -155,25 +155,25 @@ void GCoder::moveZ(ostream & ss, Scalar z, unsigned int, Scalar zFeedrate) {
 }
 
 void GCoder::calcExtrusion(unsigned int extruderId, 
-        unsigned int sliceId, 
-        const PathLabel& label, 
+        const LayerLabel& layerLabel, 
+        const PathLabel& pathLabel, 
         Extrusion& extrusionParams) const {
     string profileName;
     const Extruder& currentExtruder = gcoderCfg.extruders[extruderId];
-    if(sliceId == 0) {
+    if(layerLabel.myValue == 0) {
         profileName = currentExtruder.firstLayerExtrusionProfile;
-    } else if(label.isSupport()) {
+    } else if(pathLabel.isSupport()) {
         profileName = currentExtruder.supportExtrusionProfile;
-    } else if(label.isConnection()) {
+    } else if(pathLabel.isConnection()) {
         profileName = currentExtruder.supportExtrusionProfile;
-    } else if(label.isInset()) {
-        if(label.myValue == 
+    } else if(pathLabel.isInset()) {
+        if(pathLabel.myValue == 
                 LayerPaths::Layer::ExtruderLayer::OUTLINE_LABEL_VALUE) {
             profileName = currentExtruder.outlinesExtrusionProfile;
         } else {
             profileName = currentExtruder.insetsExtrusionProfile;
         }
-    } else if(label.isOutline()) {
+    } else if(pathLabel.isOutline()) {
         profileName = currentExtruder.outlinesExtrusionProfile;
     } else {
         profileName = currentExtruder.infillsExtrusionProfile;
@@ -271,6 +271,7 @@ void GCoder::writeSlice(std::ostream& ss,
         //print command to enable fan
         ss << "M126 (Turn on the fan)" << endl;
     }
+    //std::cout << currentLayer.label.myValue << std::endl;
     //iterate over all extruders invoked in this layer
     for (LayerPaths::Layer::const_extruder_iterator it =
             currentLayer.extruders.begin();
@@ -293,8 +294,8 @@ void GCoder::writeSlice(std::ostream& ss,
         const Scalar currentH = currentLayer.layerHeight;
         const Scalar currentW = currentLayer.layerW;
 
-        writePaths(ss, currentZ, currentH, currentW, layerSequence,
-                currentExtruder, it->paths);
+        writePaths(ss, currentZ, currentH, currentW, 
+                currentLayer.label, currentExtruder, it->paths);
     }
 }
 

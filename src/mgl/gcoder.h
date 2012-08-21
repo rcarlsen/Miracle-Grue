@@ -174,8 +174,8 @@ public:
 //            LayerPaths::const_layer_iterator layerId,
 //            Extrusion& extrusionParams) const;
     void calcExtrusion(unsigned int extruderId, 
-            unsigned int sliceId, 
-            const PathLabel& label, 
+            const LayerLabel& layerLabel, 
+            const PathLabel& pathLabel, 
             Extrusion& extrusionParams) const;
     void loadExtrusion(const std::string& profileName, 
             Extrusion& extrusionParams) const;
@@ -225,7 +225,7 @@ private:
     template <template <class, class> class LABELEDPATHS, class ALLOC>
     void writePaths(std::ostream& ss,
             Scalar z, Scalar h, Scalar w,
-            size_t layerSequence,
+            const LayerLabel& layerLabel,
             const Extruder& extruder,
             const LABELEDPATHS<LabeledOpenPath, ALLOC>& labeledPaths);
 
@@ -274,7 +274,7 @@ void GCoder::writePath(std::ostream& ss,
 template <template <class, class> class LABELEDPATHS, class ALLOC>
 void GCoder::writePaths(std::ostream& ss,
 Scalar z, Scalar h, Scalar w,
-size_t layerSequence,
+const LayerLabel& layerLabel,
 const Extruder& extruder,
 const LABELEDPATHS<LabeledOpenPath, ALLOC>& labeledPaths) {
     typedef typename LABELEDPATHS<LabeledOpenPath, ALLOC>::const_iterator
@@ -323,7 +323,7 @@ const LABELEDPATHS<LabeledOpenPath, ALLOC>& labeledPaths) {
             throw mixup;
         }
         didLastPath = true;
-        calcExtrusion(extruder.id, layerSequence, currentLP.myLabel, 
+        calcExtrusion(extruder.id, layerLabel, currentLP.myLabel, 
                 extrusion);
         writePath(ss, z, currentH, currentW, extruder, extrusion, 
                 currentLP.myPath);
