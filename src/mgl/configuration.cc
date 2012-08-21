@@ -316,6 +316,7 @@ void loadRegionerConfigFromFile(const Configuration& config,
 
     //Rafting Configuration
     regionerCfg.doRaft = boolCheck(config["doRaft"], "doRaft");
+    
     if (regionerCfg.doRaft) {
         regionerCfg.raftLayers = uintCheck(config["raftLayers"],
                 "raftLayers");
@@ -335,8 +336,12 @@ void loadRegionerConfigFromFile(const Configuration& config,
 
         regionerCfg.raftModelSpacing = doubleCheck(
                 config["supportDensity"], "supportDensity");
+        
+        regionerCfg.raftDensity = doubleCheck(
+                config["raftDensity"], "raftDensity");
     }
-
+    
+    //Support configuration
     regionerCfg.doSupport = boolCheck(config["doSupport"], "doSupport");
 
     if (regionerCfg.doSupport) {
@@ -345,9 +350,6 @@ void loadRegionerConfigFromFile(const Configuration& config,
 
         regionerCfg.raftModelSpacing = doubleCheck(
                 config["raftModelSpacing"], "raftModelSpacing");
-    }
-
-    if (regionerCfg.doRaft || regionerCfg.doSupport) {
         regionerCfg.supportDensity = doubleCheck(
                 config["supportDensity"], "supportDensity");
     }

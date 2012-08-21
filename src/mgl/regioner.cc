@@ -511,9 +511,9 @@ void Regioner::support(RegionList::iterator regionsBegin,
 void Regioner::infills(RegionList::iterator regionsBegin,
 		RegionList::iterator regionsEnd,
 		const Grid &grid) {
-
+    size_t layerSequence = 0;
 	for (RegionList::iterator current = regionsBegin;
-			current != regionsEnd; current++) {
+			current != regionsEnd; ++current, ++layerSequence) {
 
 		const GridRanges &surface = current->flatSurface;
 		tick();
@@ -567,8 +567,12 @@ void Regioner::infills(RegionList::iterator regionsBegin,
 		grid.subSample(surface, infillSkipCount, sparseInfill);
         
         if(regionerCfg.doSupport || regionerCfg.doRaft) {
-            size_t supportSkipCount = (int) (1 / regionerCfg.supportDensity) - 1;
-            grid.subSample(current->supportSurface, supportSkipCount,
+            Scalar density = 
+                    (regionerCfg.doRaft && 
+                    layerSequence < regionerCfg.raftLayers) 
+                    ? regionerCfg.raftDensity : regionerCfg.supportDensity;
+            size_t skipCount = (int) (1 / density) - 1;
+            grid.subSample(current->supportSurface, skipCount,
                     current->support);
         }
 
