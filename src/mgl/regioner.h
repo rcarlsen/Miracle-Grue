@@ -37,7 +37,8 @@ public:
 			raftOutset(6),
 			raftModelSpacing(0),
 			doSupport(false),
-			supportMargin(1.0) {}
+			supportMargin(1.0), 
+            doSupportRoofs(false){}
 
 	// These are relevant to regioner
 	Scalar tubeSpacing; //< distance in between infill (mm)
@@ -62,6 +63,8 @@ public:
 	bool doSupport;  //< do we generate support
 	Scalar supportMargin; //< distance between side wall and support
 	Scalar supportDensity;
+    bool doSupportRoofs;
+    unsigned int supportRoofsCount;
 };
 
 class LayerRegions {

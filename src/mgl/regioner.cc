@@ -399,15 +399,16 @@ void Regioner::roofing(RegionList::iterator regionsBegin,
 		roofForSlice(currentSurface, surfaceAbove, grid, roof);
 
 		grid.trimGridRange(roof, roofLengthCutOff, roofing);
-        
-        const GridRanges & currentSupportSurface = current->supportSurface;
-		const GridRanges & surfaceSupportAbove = above->supportSurface;
-		GridRanges & supportRoofing = current->supportRoofing;
-        
-        GridRanges supportRoof;
-		roofForSlice(currentSupportSurface, surfaceSupportAbove, grid, supportRoof);
+        if(regionerCfg.doSupportRoofs) {
+            const GridRanges & currentSupportSurface = current->supportSurface;
+            const GridRanges & surfaceSupportAbove = above->supportSurface;
+            GridRanges & supportRoofing = current->supportRoofing;
 
-		grid.trimGridRange(supportRoof, roofLengthCutOff, supportRoofing);
+            GridRanges supportRoof;
+            roofForSlice(currentSupportSurface, surfaceSupportAbove, grid, supportRoof);
+
+            grid.trimGridRange(supportRoof, roofLengthCutOff, supportRoofing);
+        }
 
 		++current;
 		++above;
@@ -536,6 +537,9 @@ void Regioner::infills(RegionList::iterator regionsBegin,
 
 		combinedSolid.xRays.resize(surface.xRays.size());
 		combinedSolid.yRays.resize(surface.yRays.size());
+        
+        combinedSupportSolid.xRays.resize(supportSurface.xRays.size());
+		combinedSupportSolid.yRays.resize(supportSurface.yRays.size());
 
 		//TODO: no reason to get bounds separately from the combination
 
@@ -563,14 +567,26 @@ void Regioner::infills(RegionList::iterator regionsBegin,
 		for (RegionList::iterator roof = current;
 				roof <= lastRoof; ++roof) {
 			GridRanges multiRoof;
-            GridRanges multiSupportRoof;
 
 			grid.gridRangeUnion(combinedSolid, roof->roofing, multiRoof);
-            grid.gridRangeUnion(combinedSupportSolid, roof->supportRoofing, 
-                    multiSupportRoof);
 			combinedSolid = multiRoof;
-            combinedSupportSolid = multiSupportRoof;
 		}
+        
+        if(regionerCfg.doSupportRoofs) {
+            RegionList::iterator lastSupportRoof = current;
+            for (unsigned int i = 0; i < regionerCfg.supportRoofsCount &&
+                    lastSupportRoof != regionsEnd - 1; ++i)
+                ++lastSupportRoof;
+
+            //combine support roofs
+            for (RegionList::iterator roof = current;
+                    roof <= lastSupportRoof; ++roof) {
+                GridRanges multiSupportRoof;
+                grid.gridRangeUnion(combinedSupportSolid, roof->supportRoofing, 
+                        multiSupportRoof);
+                combinedSupportSolid = multiSupportRoof;
+            }
+        }
 
 		// solid now contains the combination of combinedSolid regions from
 		// multiple slices. We need to extract the perimeter from it
