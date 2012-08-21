@@ -63,6 +63,7 @@ public:
 	bool doSupport;  //< do we generate support
 	Scalar supportMargin; //< distance between side wall and support
 	Scalar supportDensity;
+    
     bool doSupportRoofs;
     unsigned int supportRoofsCount;
 };

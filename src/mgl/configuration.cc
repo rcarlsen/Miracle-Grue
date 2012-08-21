@@ -345,6 +345,7 @@ void loadRegionerConfigFromFile(const Configuration& config,
     regionerCfg.doSupport = boolCheck(config["doSupport"], "doSupport");
 
     if (regionerCfg.doSupport) {
+        
         regionerCfg.supportMargin = doubleCheck(config["supportMargin"],
                 "supportMargin");
 
@@ -352,6 +353,14 @@ void loadRegionerConfigFromFile(const Configuration& config,
                 config["raftModelSpacing"], "raftModelSpacing");
         regionerCfg.supportDensity = doubleCheck(
                 config["supportDensity"], "supportDensity");
+        
+        regionerCfg.doSupportRoofs = boolCheck(config["doSupportRoofs"], 
+                "doSupportRoofs");
+        
+        if(regionerCfg.doSupportRoofs) {
+            regionerCfg.supportRoofsCount = uintCheck(config["supportRoofsCount"], 
+                "supportRoofsCount");
+        }
     }
 }
 
