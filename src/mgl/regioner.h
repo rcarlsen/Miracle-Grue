@@ -37,6 +37,7 @@ public:
 			raftOutset(6),
 			raftModelSpacing(0),
 			doSupport(false),
+			skipSupportLayer(false), 
 			supportMargin(1.0), 
             doSupportRoofs(false){}
 
@@ -61,6 +62,7 @@ public:
 	Scalar raftModelSpacing; //< Distance between top raft and model
 
 	bool doSupport;  //< do we generate support
+	bool skipSupportLayer;  //< do we skip a layer between support and model?
 	Scalar supportMargin; //< distance between side wall and support
 	Scalar supportDensity;
     

@@ -456,7 +456,7 @@ void Regioner::support(RegionList::iterator regionsBegin,
 				regionerCfg.supportMargin);
 		marginsList.push_back(currentMargins);
 	}
-	//int layerskip = 1;
+	int layerskip = 1;
 	RegionList::iterator above = regionsEnd;
 	std::list<LoopList>::const_iterator aboveMargins = marginsList.end();
 	--above; //work from the highest layer down
@@ -503,16 +503,18 @@ void Regioner::support(RegionList::iterator regionsBegin,
 	
 	while(current != regionsEnd && 
 			currentMargins != marginsList.end()) {
-//		int curskip = 0;
-//		for(above = current, aboveMargins = currentMargins, 
-//				++above, ++aboveMargins; 
-//				curskip < layerskip && 
-//				above != regionsEnd && 
-//				aboveMargins != marginsList.end(); 
-//				++above, ++aboveMargins, ++curskip) {
-//			loopsDifference(above->supportLoops, *currentMargins);
-//			loopsDifference(current->supportLoops, *aboveMargins);
-//		}
+		int curskip = 0;
+		if(regionerCfg.skipSupportLayer) {
+			for(above = current, aboveMargins = currentMargins, 
+					++above, ++aboveMargins; 
+					curskip < layerskip && 
+					above != regionsEnd && 
+					aboveMargins != marginsList.end(); 
+					++above, ++aboveMargins, ++curskip) {
+				loopsDifference(above->supportLoops, *currentMargins);
+				loopsDifference(current->supportLoops, *aboveMargins);
+			}
+		}
 		++current;
 		++currentMargins;
 		tick();
