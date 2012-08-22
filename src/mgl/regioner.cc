@@ -405,9 +405,12 @@ void Regioner::roofing(RegionList::iterator regionsBegin,
             GridRanges & supportRoofing = current->supportRoofing;
 
             GridRanges supportRoof;
+            GridRanges solidRoof;
             roofForSlice(currentSupportSurface, surfaceSupportAbove, grid, supportRoof);
 
-            grid.trimGridRange(supportRoof, roofLengthCutOff, supportRoofing);
+            grid.trimGridRange(supportRoof, roofLengthCutOff, solidRoof);
+            size_t skipCount = (int) (1 / regionerCfg.supportRoofsDensity) - 1;
+            grid.subSample(solidRoof, skipCount, supportRoofing);
         }
 
 		++current;

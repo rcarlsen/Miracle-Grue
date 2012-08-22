@@ -358,8 +358,12 @@ void loadRegionerConfigFromFile(const Configuration& config,
                 "doSupportRoofs");
         
         if(regionerCfg.doSupportRoofs) {
+            
             regionerCfg.supportRoofsCount = uintCheck(config["supportRoofsCount"], 
                 "supportRoofsCount");
+            
+            regionerCfg.supportRoofsDensity = doubleCheck(config["supportRoofsDensity"], 
+                "supportRoofsDensity");
         }
     }
 }

@@ -68,6 +68,7 @@ public:
     
     bool doSupportRoofs;
     unsigned int supportRoofsCount;
+    Scalar supportRoofsDensity;
 };
 
 class LayerRegions {
