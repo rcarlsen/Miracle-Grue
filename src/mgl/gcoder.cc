@@ -349,6 +349,19 @@ void GCoder::writeSlice(std::ostream& ss,
     }
 }
 
+void GCoder::writeProgressPercent(std::ostream& ss, unsigned int current, 
+        unsigned int total) {
+    if(!gcoderCfg.doPrintProgress)
+        return;
+    unsigned int curPercent = (current--*100)/total;
+    if(curPercent != progressPercent) {
+        ss << "M73 P" << curPercent << " (progress (" << 
+                curPercent << "%): " << current 
+                << "/" << total << ")" << std::endl;
+        progressPercent = curPercent;
+    }
+}
+
 Scalar Extrusion::crossSectionArea(Scalar height, Scalar width) const {
 
 
