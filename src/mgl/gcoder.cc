@@ -256,30 +256,36 @@ void GCoder::writeGcodeFile(LayerPaths& layerpaths,
                     !it->extruders.front().paths.empty() && 
                     !it->extruders.front().paths.front().myPath.empty()) {
                 startPoint = *(it->extruders.front().paths.front().myPath.fromStart());
-            }gantry.snort(gout, struder, 
+            }
+            gantry.snort(gout, struder, 
                     strusion);
+            const Scalar currentZ = it->layerZ + it->layerHeight;
+            const Scalar currentH = it->layerHeight;
+            const Scalar currentW = it->layerW;
             gantry.g1(gout, struder, 
                     strusion, gantry.gantryCfg.get_start_x(), 
-                    gantry.gantryCfg.get_start_y(), it->layerZ, 
+                    gantry.gantryCfg.get_start_y(), currentZ, 
                     strusion.feedrate, 
-                    it->layerHeight, it->layerW, "(Anchor Start)");
+                    currentH, currentW, "(Anchor Start)");
             gantry.squirt(gout, struder, 
                     strusion);
             gantry.g1(gout, struder, 
                     strusion, gantry.gantryCfg.get_start_x(), 
-                    gantry.gantryCfg.get_start_y(), it->layerZ, 
+                    gantry.gantryCfg.get_start_y(), currentZ, 
                     strusion.feedrate, 
-                    it->layerHeight, it->layerW, "(Anchor Start)");
+                    currentH, currentW, "(Anchor Start)");
             gantry.g1(gout, struder, 
-                    strusion, startPoint.x, startPoint.y, it->layerZ, 
+                    strusion, startPoint.x, startPoint.y, currentZ, 
                     strusion.feedrate, 
-                    it->layerHeight, it->layerW, "(Anchor End)");
+                    currentH, currentW, "(Anchor End)");
         }
         writeSlice(gout, layerpaths, it, layerSequence);
     }
     if(gcoderCfg.doFanCommand) {
         //print command to disable fan
-        gout << "M127 (Turn off the fan)" << endl;
+        gout << "M127 T" << 
+                gcoderCfg.defaultExtruder 
+                << " (Turn off the fan)" << endl;
     }
     writeEndDotGCode(gout);
 }
@@ -319,7 +325,9 @@ void GCoder::writeSlice(std::ostream& ss,
     }
     if (gcoderCfg.doFanCommand && layerSequence == gcoderCfg.fanLayer) {
         //print command to enable fan
-        ss << "M126 (Turn on the fan)" << endl;
+        ss << "M126 T" << 
+                gcoderCfg.defaultExtruder 
+                << " (Turn on the fan)" << endl;
     }
     //std::cout << currentLayer.label.myValue << std::endl;
     //iterate over all extruders invoked in this layer
@@ -333,16 +341,16 @@ void GCoder::writeSlice(std::ostream& ss,
         //this is the current extruder's zFeedrate
         Scalar zFeedrate = gcoderCfg.gantryCfg.get_scaling_factor() *
                 gantry.gantryCfg.get_rapid_move_feed_rate_z();
+        const Scalar currentZ = currentLayer.layerZ + currentLayer.layerHeight;
+        const Scalar currentH = currentLayer.layerHeight;
+        const Scalar currentW = currentLayer.layerW;
         try {
-            moveZ(ss, currentLayer.layerZ, currentExtruder.id, zFeedrate);
+            moveZ(ss, currentZ, currentExtruder.id, zFeedrate);
         } catch (GcoderException& mixup) {
             Log::info() << "ERROR writing Z move in slice " <<
                     layerSequence << " for extruder " << currentExtruder.id <<
                     " : " << mixup.error << endl;
         }
-        const Scalar currentZ = currentLayer.layerZ + currentLayer.layerHeight;
-        const Scalar currentH = currentLayer.layerHeight;
-        const Scalar currentW = currentLayer.layerW;
 
         writePaths(ss, currentZ, currentH, currentW, 
                 currentLayer.label, currentExtruder, it->paths);
