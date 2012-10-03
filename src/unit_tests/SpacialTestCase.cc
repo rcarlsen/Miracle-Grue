@@ -95,8 +95,13 @@ PointType randVector(Scalar Range) {
 }
 SegmentType randSegment(Scalar Range) {
     PointType a = randVector(Range);
-    PointType b = randVector(10);
-    return SegmentType(a, a+b);
+    PointType b = randVector(Range);
+    return SegmentType(a, b);
+}
+SegmentType randSegmentRealWorld(Scalar Range, Scalar Range2) {
+    PointType a = randVector(Range);
+    PointType b = randVector(Range2);
+    return SegmentType(a, a + b);
 }
 
 void SpacialTestCase::testStress() {
@@ -145,6 +150,33 @@ void SpacialTestCase::testStress() {
             << std::endl;
     std::cout << clock() - start << std::endl;
     CPPUNIT_ASSERT_EQUAL(finalBrute.size(), finalFiltered.size());
+}
+
+void SpacialTestCase::testRtreeOutput() {
+    typedef basic_rtree<SegmentType> lineIndexType;
+    typedef std::vector<SegmentType> simpleCollectionType;
+    srand(static_cast<unsigned int>(time(NULL)));
+    srand(rand());
+    
+    static const size_t SET_SIZE = 50;
+    
+    simpleCollectionType dataset;
+    std::cout << "Making " << SET_SIZE << " lines" << std::endl;
+    Scalar range = 256;
+    Scalar range2 = 10;
+    for(size_t i=0; i < SET_SIZE; ++i) {
+        dataset.push_back(randSegmentRealWorld(range, range2));
+    }
+    lineIndexType boxlist;
+    std::cout << "Building index" << std::endl;
+    clock_t start = clock();
+    for(simpleCollectionType::const_iterator iter = dataset.begin(); 
+            iter != dataset.end(); 
+            ++iter) {
+        boxlist.insert(*iter);
+    }
+    std::cout << clock() - start << std::endl;
+    boxlist.repr(std::cerr);
 }
 
 void SpacialTestCase::testRtreeFilter() {
@@ -199,7 +231,6 @@ void SpacialTestCase::testRtreeStress() {
     srand(static_cast<unsigned int>(time(NULL)));
     srand(rand());
     simpleCollectionType dataset;
-    //size_t SET_SIZE = 200;
     std::cout << "Making " << SET_SIZE << " lines" << std::endl;
     Scalar range = 500;
     for(size_t i=0; i < SET_SIZE; ++i) {
@@ -215,7 +246,6 @@ void SpacialTestCase::testRtreeStress() {
         boxlist.insert(*iter);
     }
     std::cout << clock() - start << std::endl;
-    //boxlist.repr(std::cerr);
     start = clock();
     std::cout << "Filtering set" << std::endl;
     simpleCollectionType result;
@@ -254,9 +284,10 @@ void SpacialTestCase::testPerformance() {
     basic_rtree<SegmentType> rtree;
     vector testset;
     
-    static const size_t SET_SIZE = 1000;
+    static const size_t SET_SIZE = 10000;
     static const size_t TEST_SIZE = 1000;
     Scalar range = 500;
+    Scalar range2 = 20;
     
     std::cout << "Making " << SET_SIZE << " lines" << std::endl;
     for(size_t i=0; i < SET_SIZE; ++i) {
@@ -264,7 +295,7 @@ void SpacialTestCase::testPerformance() {
     }
     std::cout << "Making " << TEST_SIZE << " lines for testing" << std::endl;
     for(size_t i=0; i < TEST_SIZE; ++i) {
-        testset.push_back(randSegment(range));
+        testset.push_back(randSegmentRealWorld(range, range2));
     }
     time_t start = clock();
     std::cout << "Building Boxlist" << std::endl;
