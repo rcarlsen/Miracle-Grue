@@ -9,7 +9,6 @@
 
 using namespace std;
 using namespace mgl;
-using namespace libthing;
 
 CPPUNIT_TEST_SUITE_REGISTRATION( GantryTestCase );
 
@@ -18,21 +17,21 @@ void GantryTestCase::setUp(){
 }
 
 void GantryTestCase::testInitConfig(){
-	GantryConfig gantryCfg;
-	Gantry gantry(gantryCfg);
+    GrueConfig grueCfg;
+	Gantry gantry(grueCfg);
 	
-	CPPUNIT_ASSERT_EQUAL(gantryCfg.get_start_x(), gantry.get_x());
-	CPPUNIT_ASSERT_EQUAL(gantryCfg.get_start_y(), gantry.get_y());
-	CPPUNIT_ASSERT_EQUAL(gantryCfg.get_start_z(), gantry.get_z());
-	CPPUNIT_ASSERT_EQUAL(gantryCfg.get_start_a(), gantry.get_a());
-	CPPUNIT_ASSERT_EQUAL(gantryCfg.get_start_b(), gantry.get_b());
-	CPPUNIT_ASSERT_EQUAL(gantryCfg.get_start_feed(), gantry.get_feed());
+	CPPUNIT_ASSERT_EQUAL(grueCfg.get_startingX(), gantry.get_x());
+	CPPUNIT_ASSERT_EQUAL(grueCfg.get_startingY(), gantry.get_y());
+	CPPUNIT_ASSERT_EQUAL(grueCfg.get_startingZ(), gantry.get_z());
+	CPPUNIT_ASSERT_EQUAL(grueCfg.get_startingA(), gantry.get_a());
+	CPPUNIT_ASSERT_EQUAL(grueCfg.get_startingB(), gantry.get_b());
+	CPPUNIT_ASSERT_EQUAL(grueCfg.get_startingFeed(), gantry.get_feed());
 }
 void GantryTestCase::testManualMove(){
 	static const Scalar x = 10, y = 20, z = 50;
 		
-	GantryConfig gantryCfg;
-	Gantry gantry(gantryCfg);
+	GrueConfig grueCfg;
+	Gantry gantry(grueCfg);
 	
 	gantry.set_x(x);
 	gantry.set_y(y);
@@ -48,8 +47,8 @@ void GantryTestCase::testG1Move(){
 	stringstream ss;
 	stringstream expected;
 	
-	GantryConfig gantryCfg;
-	Gantry gantry(gantryCfg);
+GrueConfig grueCfg;
+	Gantry gantry(grueCfg);
 	
 	gantry.set_x(0);
 	gantry.set_y(0);
@@ -78,8 +77,8 @@ void GantryTestCase::testG1Extrude(){
 	stringstream ss;
 	stringstream expected;
 	
-	GantryConfig gantryCfg;
-	Gantry gantry(gantryCfg);
+    GrueConfig grueCfg;
+	Gantry gantry(grueCfg);
 	
 	Extruder uder;
 	Extrusion usion;
@@ -111,8 +110,8 @@ void GantryTestCase::testSquirtSnort(){
 	string astring;
 	string estring;
 	
-	GantryConfig gantryCfg;
-	Gantry gantry(gantryCfg);
+	GrueConfig grueCfg;
+	Gantry gantry(grueCfg);
 	
 	gantry.set_x(0);
 	gantry.set_y(0);
@@ -128,7 +127,7 @@ void GantryTestCase::testSquirtSnort(){
 	
 	cout << "\nSnort test\n" << endl;
 	
-	gantry.snort(ss, Vector2(20,20), uder, usion);
+	gantry.snort(ss, Point2Type(20,20), uder, usion);
 	expected << "G1" << " F2400" << uder.retractRate << 
 			" A" << -uder.retractDistance << " (snort)" << endl;
 	astring = ss.str();
@@ -141,7 +140,7 @@ void GantryTestCase::testSquirtSnort(){
 	
 	cout << "\nSquirt test\n" << endl;
 	
-	gantry.squirt(ss, Vector2(30,30), uder, usion);
+	gantry.squirt(ss, Point2Type(30,30), uder, usion);
 	expected << "G1" << " F" << uder.retractRate << 
 			" A" << 0.0 << " (squirt)" << endl;
 	astring = ss.str();

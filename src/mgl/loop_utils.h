@@ -2,6 +2,7 @@
 #define	LOOP_UTILS_H
 
 #include "loop_path.h"
+#include "labeled_path.h"
 #include <set>
 
 namespace mgl {
@@ -9,18 +10,18 @@ namespace mgl {
 template <typename COMPARE = std::less<Scalar> >
 class basic_anglefunctor {
 public:
-	basic_anglefunctor(PointType ref, const COMPARE& comp = COMPARE()) 
+	basic_anglefunctor(Point2Type ref, const COMPARE& comp = COMPARE()) 
 			: my_compare(comp), reference(ref) {}
-	bool operator () (const PointType& l, const PointType& r) const {
+	bool operator () (const Point2Type& l, const Point2Type& r) const {
 		if(l == r || l == reference || r == reference)
 			return false;
-		PointType lvec = (l-reference).unit();
-		PointType rvec = (r-reference).unit();
+		Point2Type lvec = (l-reference).unit();
+		Point2Type rvec = (r-reference).unit();
 		return my_compare(rvec.crossProduct(lvec), 0);
 	}
 private:
 	COMPARE my_compare;
-	PointType reference;
+	Point2Type reference;
 };
 
 template <typename COMPARE = std::less<Scalar> >
@@ -28,7 +29,7 @@ class basic_axisfunctor {
 public:
 	basic_axisfunctor(axis_e a = X_AXIS, const COMPARE& comp = COMPARE()) 
 			: my_compare(comp), axis(a) {}
-	bool operator () (const PointType& l, const PointType& r) const {
+	bool operator () (const Point2Type& l, const Point2Type& r) const {
 		switch(axis) {
 		case X_AXIS:
 			return l.x == r.x ? my_compare(l.y, r.y) : my_compare(l.x, r.x);
@@ -61,7 +62,7 @@ void stripDuplicates(COLLECTION<T, ALLOC>& collection,
 
 template <template <class, class> class COLLECTION, class ALLOC>
 Loop createConvexLoop(const COLLECTION<Loop, ALLOC>& input){	
-	std::vector<PointType> points;
+	std::vector<Point2Type> points;
 	/* Assemble all points in a vector */
 	for(typename COLLECTION<Loop, ALLOC>::const_iterator iter = input.begin(); 
 			iter != input.end(); 
@@ -84,17 +85,17 @@ Loop createConvexLoop(const COLLECTION<Loop, ALLOC>& input){
 	
 	Loop retLoop;
 		
-	std::vector<PointType>::iterator startIter = points.begin();
-	std::vector<PointType>::iterator lastIter = points.begin();
+	std::vector<Point2Type>::iterator startIter = points.begin();
+	std::vector<Point2Type>::iterator lastIter = points.begin();
 	
 	retLoop.insertPointBefore(*lastIter, retLoop.clockwiseEnd());
 	
 	do {
-		std::vector<PointType>::iterator bestIter = lastIter;
+		std::vector<Point2Type>::iterator bestIter = lastIter;
 		++bestIter;
 		if(bestIter == points.end())
 			bestIter = points.begin();
-		for(std::vector<PointType>::iterator iter = points.begin(); 
+		for(std::vector<Point2Type>::iterator iter = points.begin(); 
 				iter != points.end(); 
 				++iter ){
 			if(AngleFunctor(*lastIter).operator ()(
@@ -126,7 +127,8 @@ void loopsXOR(LoopList &dest,
 
 void loopsOffset(LoopList& dest, const LoopList& subject, Scalar distance);
 
-void smooth(const Loop& input, Scalar smoothness, Loop& output, Scalar factor = 1.0);
+void smooth(const Loop& input, Scalar smoothness, Loop& output, Scalar factor = 1.0, 
+        bool recurse = true);
 void smooth(const OpenPath& input, Scalar smoothness, OpenPath& output, Scalar factor = 1.0);
 
 template <typename LOOP_OR_PATH>
@@ -134,6 +136,22 @@ void smooth(LOOP_OR_PATH& input, Scalar smoothness, Scalar factor = 1.0) {
     LOOP_OR_PATH output;
     smooth(input, smoothness, output, factor);
     input = output;
+}
+template <typename LOOP_OR_PATH>
+void smooth(basic_labeled_path<LOOP_OR_PATH>& input, Scalar smoothness, Scalar factor = 1.0) {
+    LOOP_OR_PATH output;
+    smooth(input.myPath, smoothness, output, factor);
+    input.myPath = output;
+}
+template <typename LOOP_OR_PATH_COLLECTION>
+void smoothCollection(LOOP_OR_PATH_COLLECTION& input, Scalar smoothness, 
+        Scalar factor = 1.0) {
+    typedef typename LOOP_OR_PATH_COLLECTION::iterator iterator;
+    for(iterator iter = input.begin();
+            iter != input.end();
+            ++iter) {
+        smooth(*iter, smoothness, factor);
+    }
 }
 
 }

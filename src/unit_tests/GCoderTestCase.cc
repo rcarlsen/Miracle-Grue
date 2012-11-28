@@ -19,7 +19,6 @@
 
 using namespace std;
 using namespace mgl;
-using namespace libthing;
 
 
 
@@ -123,10 +122,10 @@ void GCoderTestCase::setUp() {
 }
 
 void rectangle(mgl::Polygon& poly, double lower_x, double lower_y, double dx, double dy) {
-	Vector2 p0(lower_x, lower_y);
-	Vector2 p1(p0.x, p0.y + dy);
-	Vector2 p2(p1.x + dx, p1.y);
-	Vector2 p3(p2.x, p2.y - dy);
+	Point2Type p0(lower_x, lower_y);
+	Point2Type p1(p0.x, p0.y + dy);
+	Point2Type p2(p1.x + dx, p1.y);
+	Point2Type p3(p2.x, p2.y - dy);
 
 	poly.push_back(p0);
 	poly.push_back(p1);
@@ -181,10 +180,11 @@ void GCoderTestCase::testSingleExtruder() {
 	string confstr = w.write(config.root);
 	cout << confstr << endl;
 
-	GCoderConfig cfg;
-	cfg.extruders.push_back(Extruder());
-
-	GCoder gcoder(cfg);
+//	GCoderConfig cfg;
+//	cfg.extruders.push_back(Extruder());
+    
+    GrueConfig grueCfg;
+	GCoder gcoder(grueCfg);
 
 
 	std::ofstream gout(SINGLE_EXTRUDER_FILE_NAME, std::ios::out);
@@ -216,11 +216,13 @@ void GCoderTestCase::testDualExtruders() {
 
 	std::ofstream gout(DUAL_EXTRUDER_FILE_NAME);
 
-	GCoderConfig gcoderCfg;
-	gcoderCfg.extruders.push_back(Extruder());
-	gcoderCfg.extruders.push_back(Extruder());
-	//	loadGCoderData(config, gcoder);
-	GCoder gcoder(gcoderCfg);
+//	GCoderConfig gcoderCfg;
+//	gcoderCfg.extruders.push_back(Extruder());
+//	gcoderCfg.extruders.push_back(Extruder());
+//	//	loadGCoderData(config, gcoder);
+//	GCoder gcoder(gcoderCfg);
+    GrueConfig grueCfg;
+	GCoder gcoder(grueCfg);
 
 	gcoder.writeStartDotGCode(gout, DUAL_EXTRUDER_FILE_NAME);
 	dbg__
@@ -254,10 +256,12 @@ void GCoderTestCase::testSimplePath() {
 
 	std::ofstream gout(SINGLE_EXTRUDER_WITH_PATH);
 
-	GCoderConfig gcoderCfg;
-	gcoderCfg.extruders.push_back(Extruder());
-
-	GCoder gcoder(gcoderCfg);
+//	GCoderConfig gcoderCfg;
+//	gcoderCfg.extruders.push_back(Extruder());
+//
+//	GCoder gcoder(gcoderCfg);
+    GrueConfig grueCfg;
+	GCoder gcoder(grueCfg);
 
 	gcoder.writeStartDotGCode(gout, SINGLE_EXTRUDER_WITH_PATH);
 	gcoder.writeEndDotGCode(gout);
@@ -367,8 +371,8 @@ void initHorizontalGridPath(SliceData &d,
 		mgl::Polygon &poly = polys[index];
 
 		double y = lowerY + i * dy / lineCount;
-		Vector2 p0(lowerX, y);
-		Vector2 p1(p0.x + dx, y);
+		Point2Type p0(lowerX, y);
+		Point2Type p1(p0.x + dx, y);
 		if (!flip) {
 			poly.push_back(p0);
 			poly.push_back(p1);
@@ -395,8 +399,8 @@ void initHorizontalGridPath(LayerPaths::Layer &d,
 		OpenPath currentInfill;
 
 		double y = lowerY + i * dy / lineCount;
-		Vector2 p0(lowerX, y);
-		Vector2 p1(p0.x + dx, y);
+		Point2Type p0(lowerX, y);
+		Point2Type p1(p0.x + dx, y);
 		if(flip)
 			std::swap(p0, p1);
 		currentInfill.appendPoint(p0);
@@ -424,8 +428,8 @@ void initVerticalGridPath(SliceData &d,
 		mgl::Polygon &poly = polys[index];
 
 		double x = lowerX + i * dx / lineCount;
-		Vector2 p0(x, lowerY);
-		Vector2 p1(x, lowerY + dy);
+		Point2Type p0(x, lowerY);
+		Point2Type p1(x, lowerY + dy);
 		if (!flip) {
 			poly.push_back(p0);
 			poly.push_back(p1);
@@ -452,8 +456,8 @@ void initVerticalGridPath(LayerPaths::Layer &d,
 		OpenPath currentInfill;
 
 		double x = lowerX + i * dx / lineCount;
-		Vector2 p0(x, lowerY);
-		Vector2 p1(x, lowerY + dy);
+		Point2Type p0(x, lowerY);
+		Point2Type p1(x, lowerY + dy);
 		if(flip)
 			std::swap(p0, p1);
 		currentInfill.appendPoint(p0);
@@ -494,10 +498,12 @@ void GCoderTestCase::testGridPath() {
 
 	std::ofstream gout(SINGLE_EXTRUDER_GRID_PATH);
 
-	GCoderConfig gcoderCfg;
-	gcoderCfg.extruders.push_back(Extruder());
-
-	GCoder gcoder(gcoderCfg);
+//	GCoderConfig gcoderCfg;
+//	gcoderCfg.extruders.push_back(Extruder());
+//
+//	GCoder gcoder(gcoderCfg);
+    GrueConfig grueCfg;
+	GCoder gcoder(grueCfg);
 
 	gcoder.writeStartDotGCode(gout, SINGLE_EXTRUDER_GRID_PATH);
 //	for (int i = 0; i < slices.size(); i++) {
@@ -570,10 +576,12 @@ void GCoderTestCase::testMultiGrid() {
 
 	std::ofstream gout(SINGLE_EXTRUDER_MULTI_GRID_PATH);
 
-	GCoderConfig gcoderCfg;
-	gcoderCfg.extruders.push_back(Extruder());
-
-	GCoder gcoder(gcoderCfg);
+//	GCoderConfig gcoderCfg;
+//	gcoderCfg.extruders.push_back(Extruder());
+//
+//	GCoder gcoder(gcoderCfg);
+    GrueConfig grueCfg;
+	GCoder gcoder(grueCfg);
 
 	// loadGCoderData(config, gcoder);
 	gcoder.writeStartDotGCode(gout, SINGLE_EXTRUDER_MULTI_GRID_PATH);

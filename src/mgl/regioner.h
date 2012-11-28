@@ -71,6 +71,8 @@ public:
 	std::list<LoopList> insetLoops;
 	LoopList supportLoops;
 	LoopList interiorLoops;
+    LoopList floorLoops;
+    LoopList roofLoops;
 
 	GridRanges flatSurface; // # number of slices + roofCount * 2
 	GridRanges supportSurface; //flat surface outside of the actual object
@@ -115,8 +117,8 @@ public:
 			   LayerMeasure &layerMeasure,
 			   RegionList &regionlist);
 
-	void insetsForSlice(const libthing::SegmentTable &sliceOutlines,
-			libthing::Insets &sliceInsets,
+	void insetsForSlice(const SegmentTable &sliceOutlines,
+			Insets &sliceInsets,
 			const char* scadFile = NULL);
 	void insetsForSlice(const LoopList& sliceOutlines,
 			std::list<LoopList>& sliceInsets,

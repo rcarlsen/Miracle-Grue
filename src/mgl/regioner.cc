@@ -17,10 +17,12 @@
 
 using namespace mgl;
 using namespace std;
-using namespace libthing;
+
 
 Regioner::Regioner(const GrueConfig& grueConf, ProgressBar* progress)
         : Progressive(progress), grueCfg(grueConf) {}
+
+static const Scalar LOOP_ERROR_FUDGE_FACTOR = 0.05;
 
 void Regioner::generateSkeleton(const LayerLoops& layerloops,
 		LayerMeasure& layerMeasure,
@@ -46,12 +48,22 @@ void Regioner::generateSkeleton(const LayerLoops& layerloops,
 	}
 
 	//optionally inflate if rafts present
-	if (grueCfg.get_doRaft()) {
-		limits.inflate(0, 0,
-				grueCfg.get_raftBaseThickness() +
-				grueCfg.get_raftInterfaceThickness() *
-				(grueCfg.get_raftLayers() - 1));
+	if (grueCfg.get_doRaft() && grueCfg.get_raftLayers() > 0) {
+        Scalar raftHeight = grueCfg.get_raftBaseThickness() + 
+                grueCfg.get_raftInterfaceThickness() * 
+                (grueCfg.get_raftLayers() - 1);
+        Scalar raftOutsetOverhead = grueCfg.get_raftOutset() * 4;
+        //increase height by raft height
+        limits.grow(Point3Type(
+                limits.center().x, limits.center().y, 
+                limits.zMax + raftHeight));
+        //grow sides by raft outset
+        limits.inflate(raftOutsetOverhead, raftOutsetOverhead, 0);
 	}
+    if(grueCfg.get_doSupport()) {
+        Scalar supportOverhead = grueCfg.get_supportMargin() * 4;
+        limits.inflate(supportOverhead, supportOverhead, 0);
+    }
 
 	grid.init(limits, layerMeasure.getLayerW() *
 			grueCfg.get_gridSpacingMultiplier());
@@ -165,7 +177,7 @@ void Regioner::rafts(const LayerRegions& bottomLayer,
 	tick();
 
 	SegmentTable convexSegs;
-	convexSegs.push_back(std::vector<LineSegment2 > ());
+	convexSegs.push_back(std::vector<Segment2Type > ());
 
 	for (Loop::finite_cw_iterator iter = convexLoop.clockwiseFinite();
 			iter != convexLoop.clockwiseEnd(); ++iter) {
@@ -174,14 +186,14 @@ void Regioner::rafts(const LayerRegions& bottomLayer,
 	}
 
 	SegmentTable outsetSegs;
-	outsetSegs.push_back(std::vector<LineSegment2 > ());
+	outsetSegs.push_back(std::vector<Segment2Type > ());
 
 	//outset the convex hull by the configured distance
 	ClipperInsetter().inset(convexSegs, -grueCfg.get_raftOutset(), outsetSegs);
 	tick();
 
 	Loop raftLoop;
-	for (std::vector<LineSegment2>::const_iterator iter =
+	for (std::vector<Segment2Type>::const_iterator iter =
 			outsetSegs.back().begin();
 			iter != outsetSegs.back().end();
 			++iter) {
@@ -243,8 +255,8 @@ void Regioner::insetsForSlice(const LoopList& sliceOutlines,
 		LayerMeasure& layermeasure,
 		const char* scadFile) {
 
-	libthing::SegmentTable sliceOutlinesOld;
-	libthing::Insets sliceInsetsOld;
+	SegmentTable sliceOutlinesOld;
+	Insets sliceInsetsOld;
 
 	/*
 	 This function makes use of inshelligence, which indirectly makes use of 
@@ -258,7 +270,7 @@ void Regioner::insetsForSlice(const LoopList& sliceOutlines,
 	for (LoopList::const_iterator iter = sliceOutlines.begin();
 			iter != sliceOutlines.end();
 			++iter) {
-		sliceOutlinesOld.push_back(std::vector<libthing::LineSegment2 > ());
+		sliceOutlinesOld.push_back(std::vector<Segment2Type > ());
 		const Loop& currentLoop = *iter;
 		//Convert current loop to a vector of segments
 		for (Loop::const_finite_cw_iterator loopiter =
@@ -280,22 +292,22 @@ void Regioner::insetsForSlice(const LoopList& sliceOutlines,
 			sliceInsetsOld);
 
 	//Recover loops from the resulting SegmentTable
-	for (libthing::Insets::const_iterator iter = sliceInsetsOld.begin();
+	for (Insets::const_iterator iter = sliceInsetsOld.begin();
 			iter != sliceInsetsOld.end();
 			++iter) {
 		sliceInsets.push_back(LoopList());
 		LoopList& currentLoopList = sliceInsets.back();
 		//Convert each group of insets into a list of Loops
-		for (libthing::SegmentTable::const_iterator setIter = iter->begin();
+		for (SegmentTable::const_iterator setIter = iter->begin();
 				setIter != iter->end();
 				++setIter) {
 			currentLoopList.push_back(Loop());
-			const std::vector<libthing::LineSegment2>& currentPoly = *setIter;
+			const std::vector<Segment2Type>& currentPoly = *setIter;
 			Loop& currentLoop = currentLoopList.back();
 			Loop::cw_iterator loopIter = currentLoop.clockwiseEnd();
 			//Convert each individual inset to a Loop
 			//Insert points 1 - N
-			for (std::vector<libthing::LineSegment2>::const_iterator polyIter =
+			for (std::vector<Segment2Type>::const_iterator polyIter =
 					currentPoly.begin();
 					polyIter != currentPoly.end();
 					++polyIter) {
@@ -308,8 +320,8 @@ void Regioner::insetsForSlice(const LoopList& sliceOutlines,
 	}
 }
 
-//void Regioner::insets(const std::vector<libthing::SegmentTable> & outlinesSegments,
-//		std::vector<libthing::Insets> & insets) {
+//void Regioner::insets(const std::vector<SegmentTable> & outlinesSegments,
+//		std::vector<Insets> & insets) {
 //
 //	unsigned int sliceCount = outlinesSegments.size();
 //	initProgress("insets", sliceCount);
@@ -318,8 +330,8 @@ void Regioner::insetsForSlice(const LoopList& sliceOutlines,
 //	// slice id must be adjusted for
 //	for (size_t i = 0; i < sliceCount; i++) {
 //		tick();
-//		const libthing::SegmentTable & sliceOutlines = outlinesSegments[i];
-//		libthing::Insets & sliceInsets = insets[i];
+//		const SegmentTable & sliceOutlines = outlinesSegments[i];
+//		Insets & sliceInsets = insets[i];
 //
 //		insetsForSlice(sliceOutlines, sliceInsets);
 //	}
@@ -339,7 +351,11 @@ void Regioner::insets(const LayerLoops::const_layer_iterator outlinesBegin,
 
 		insetsForSlice(currentOutlines, region->insetLoops,
 				layermeasure, NULL);
-
+        if(!region->insetLoops.empty()) {
+            loopsOffset(region->interiorLoops, region->insetLoops.back(), 
+                    -grueCfg.get_insetDistanceMultiplier() * 0.5 * 
+                    layermeasure.getLayerWidth(region->layerMeasureId));
+        }
 		++outline;
 		++region;
 	}
@@ -351,8 +367,10 @@ void Regioner::flatSurfaces(RegionList::iterator regionsBegin,
 	for (; regionsBegin != regionsEnd; ++regionsBegin) {
 		tick();
 		//GridRanges currentSurface;
-		gridRangesForSlice(regionsBegin->insetLoops, grid,
-				regionsBegin->flatSurface);
+//		gridRangesForSlice(regionsBegin->insetLoops, grid,
+//				regionsBegin->flatSurface);
+        regionsBegin->flatSurface.yRays.resize(grid.getXValues().size());
+        regionsBegin->flatSurface.xRays.resize(grid.getYValues().size());
 		//inset supportloops by a fraction of supportmargin
 		LoopList insetSupportLoops;
 		loopsOffset(insetSupportLoops, regionsBegin->supportLoops, 
@@ -379,22 +397,29 @@ void Regioner::roofForSlice(const GridRanges & currentSurface, const GridRanges 
 
 void Regioner::roofing(RegionList::iterator regionsBegin,
 		RegionList::iterator regionsEnd,
-		const Grid& grid) {
-
+		const Grid& //grid
+        ) {
+    if(regionsBegin == regionsEnd)
+        return;
 	RegionList::iterator current = regionsBegin;
 	RegionList::iterator above = current;
 	++above;
 
 	while (above != regionsEnd) {
 		tick();
-		const GridRanges & currentSurface = current->flatSurface;
-		const GridRanges & surfaceAbove = above->flatSurface;
-		GridRanges & roofing = current->roofing;
+//		const GridRanges & currentSurface = current->flatSurface;
+//		const GridRanges & surfaceAbove = above->flatSurface;
+//		GridRanges & roofing = current->roofing;
+        LoopList& roofLoops = current->roofLoops;
 
-		GridRanges roof;
-		roofForSlice(currentSurface, surfaceAbove, grid, roof);
-
-		grid.trimGridRange(roof, roofLengthCutOff, roofing);
+//		GridRanges roof;
+//		roofForSlice(currentSurface, surfaceAbove, grid, roof);
+//
+//		grid.trimGridRange(roof, roofLengthCutOff, roofing);
+        LoopList diffResult;
+        loopsDifference(diffResult, current->interiorLoops, above->interiorLoops);
+        //compensate for errors in the difference by a fudge factor
+        loopsOffset(roofLoops, diffResult, LOOP_ERROR_FUDGE_FACTOR);
 
 		++current;
 		++above;
@@ -406,25 +431,34 @@ void Regioner::roofing(RegionList::iterator regionsBegin,
 
 void Regioner::flooring(RegionList::iterator regionsBegin,
 		RegionList::iterator regionsEnd,
-		const Grid &grid) {
+		const Grid& //grid
+        ) {
+    if(regionsBegin == regionsEnd)
+        return;
 	RegionList::iterator below = regionsBegin;
 	RegionList::iterator current = below;
 	current++;
 
 	while (current != regionsEnd) {
+        LoopList& floorLoops = current->floorLoops;
 		tick();
-		const GridRanges & currentSurface = current->flatSurface;
-		const GridRanges & surfaceBelow = below->flatSurface;
-		GridRanges & flooring = current->flooring;
+//		const GridRanges & currentSurface = current->flatSurface;
+//		const GridRanges & surfaceBelow = below->flatSurface;
+//		GridRanges & flooring = current->flooring;
 
-		floorForSlice(currentSurface, surfaceBelow, grid, flooring);
+//		floorForSlice(currentSurface, surfaceBelow, grid, flooring);
+        LoopList diffResult;
+        loopsDifference(diffResult, current->interiorLoops, below->interiorLoops);
+        //compensate for errors in the difference by a fudge factor
+        loopsOffset(floorLoops, diffResult, LOOP_ERROR_FUDGE_FACTOR);
 
 		++below;
 		++current;
 	}
 
 	tick();
-	regionsBegin->flooring = regionsBegin->flatSurface;
+//	regionsBegin->flooring = regionsBegin->flatSurface;
+    regionsBegin->floorLoops = regionsBegin->interiorLoops;
 
 }
 
@@ -456,18 +490,22 @@ void Regioner::support(RegionList::iterator regionsBegin,
 		--currentMargins;
 		
 		LoopList &support = current->supportLoops;
-
+        
+        //offset aboveMargins by a fudge factor
+        //to compensate for error when we subtracted them from layer above
+        LoopList aboveMarginsOutset;
+        loopsOffset(aboveMarginsOutset, *aboveMargins, LOOP_ERROR_FUDGE_FACTOR);
+        
 		if (above->supportLoops.empty()) {
 			//beginning of new support
-			support = *aboveMargins;
+			support = aboveMarginsOutset;
 		} else {
 			//start with a projection of support from the layer above
 			support = above->supportLoops;
-
 			//add the outlines of layer above
-			loopsUnion(support, *aboveMargins);
+			loopsUnion(support, aboveMarginsOutset);
 		}
-
+        tick();
 		//subtract current outlines from the support loops to keep support
 		//from overlapping the object
 
@@ -478,7 +516,7 @@ void Regioner::support(RegionList::iterator regionsBegin,
 		--aboveMargins;
 		tick();
 	}
-	
+	return;
 	current = regionsBegin;
 	currentMargins = marginsList.begin();
 	above = current;
@@ -516,52 +554,69 @@ void Regioner::infills(RegionList::iterator regionsBegin,
 		tick();
 
 		// Solids
-		GridRanges combinedSolid;
+		//GridRanges combinedSolid;
+        LoopList combinedLoops;
 
-		combinedSolid.xRays.resize(surface.xRays.size());
-		combinedSolid.yRays.resize(surface.yRays.size());
+//		combinedSolid.xRays.resize(surface.xRays.size());
+//		combinedSolid.yRays.resize(surface.yRays.size());
 
 		//TODO: no reason to get bounds separately from the combination
 
 		//find the bounds we will be combinging regions across
 		RegionList::iterator firstFloor = current;
-		for (unsigned int i = 0; i < grueCfg.get_floorLayerCount() &&
+        RegionList::iterator floorEnd = current;
+		for (unsigned int i = 1; i < grueCfg.get_floorLayerCount() &&
 				firstFloor != regionsBegin; ++i)
 			--firstFloor;
 
 		RegionList::iterator lastRoof = current;
-		for (unsigned int i = 0; i < grueCfg.get_roofLayerCount() &&
+        RegionList::iterator roofEnd = current;
+		for (unsigned int i = 1; i < grueCfg.get_roofLayerCount() &&
 				lastRoof != regionsEnd - 1; ++i)
 			++lastRoof;
-
+        
+        if(grueCfg.get_floorLayerCount() > 0)
+            ++floorEnd;
+        if(grueCfg.get_roofLayerCount() > 0)
+            --roofEnd;
 		//combine floors
 		for (RegionList::iterator floor = firstFloor;
-				floor <= current; ++floor) {
-			GridRanges multiFloor;
+				floor != floorEnd; ++floor) {
+//			GridRanges multiFloor;
 
-			grid.gridRangeUnion(combinedSolid, floor->flooring, multiFloor);
-			combinedSolid = multiFloor;
+//			grid.gridRangeUnion(combinedSolid, floor->flooring, multiFloor);
+//			combinedSolid = multiFloor;
+            loopsUnion(combinedLoops, floor->floorLoops);
 		}
 
 		//combine roofs
-		for (RegionList::iterator roof = current;
-				roof <= lastRoof; ++roof) {
-			GridRanges multiRoof;
+		for (RegionList::iterator roof = lastRoof;
+				roof != roofEnd; --roof) {
+//			GridRanges multiRoof;
 
-			grid.gridRangeUnion(combinedSolid, roof->roofing, multiRoof);
-			combinedSolid = multiRoof;
+//			grid.gridRangeUnion(combinedSolid, roof->roofing, multiRoof);
+//			combinedSolid = multiRoof;
+            loopsUnion(combinedLoops, roof->roofLoops);
 		}
 
 		// solid now contains the combination of combinedSolid regions from
 		// multiple slices. We need to extract the perimeter from it
 
-		grid.gridRangeIntersection(surface, combinedSolid, current->solid);
+//		grid.gridRangeIntersection(surface, combinedSolid, current->solid);
+        loopsIntersection(combinedLoops, current->interiorLoops);
+        LoopList sparseLoops;
+        loopsDifference(sparseLoops, current->interiorLoops, combinedLoops);
+        
 
 		// TODO: move me to the slicer
-		GridRanges sparseInfill;
+		GridRanges sparseInfill, sparsePreInfill, solidInfill;
+        
+        gridRangesForSlice(combinedLoops, grid, solidInfill);
+        gridRangesForSlice(sparseLoops, grid, sparsePreInfill);
+        
 		size_t infillSkipCount = (int) (1 / grueCfg.get_infillDensity()) - 1;
 
-		grid.subSample(surface, infillSkipCount, sparseInfill);
+		grid.subSample(sparsePreInfill, infillSkipCount, sparseInfill);
         
         if(grueCfg.get_doSupport() || grueCfg.get_doRaft()) {
             size_t supportSkipCount = 0;
@@ -576,7 +631,30 @@ void Regioner::infills(RegionList::iterator regionsBegin,
             }
         }
 
-		grid.gridRangeUnion(current->solid, sparseInfill, current->infill);
+		//grid.gridRangeUnion(current->solid, sparseInfill, current->infill);
+        current->infill.xRays.resize(surface.xRays.size());
+        current->infill.yRays.resize(surface.yRays.size());
+        
+        for(size_t x = 0; x < surface.xRays.size(); ++x) {
+            current->infill.xRays[x].insert(
+                    current->infill.xRays[x].end(), 
+                    sparseInfill.xRays[x].begin(), 
+                    sparseInfill.xRays[x].end());
+            current->infill.xRays[x].insert(
+                    current->infill.xRays[x].end(), 
+                    solidInfill.xRays[x].begin(), 
+                    solidInfill.xRays[x].end());
+        }
+        for(size_t y = 0; y < surface.yRays.size(); ++y) {
+            current->infill.yRays[y].insert(
+                    current->infill.yRays[y].end(), 
+                    sparseInfill.yRays[y].begin(), 
+                    sparseInfill.yRays[y].end());
+            current->infill.yRays[y].insert(
+                    current->infill.yRays[y].end(), 
+                    solidInfill.yRays[y].begin(), 
+                    solidInfill.yRays[y].end());
+        }
 	}
 
 }

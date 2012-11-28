@@ -126,16 +126,16 @@ public:
     GrueConfig();
     void loadFromFile(const Configuration& config);
     Scalar segmentVolume(const Extruder& extruder, const Extrusion& extrusion, 
-            const libthing::LineSegment2& segment, Scalar h, Scalar w) const;
+            const Segment2Type& segment, Scalar h, Scalar w) const;
 #define GRUECONFIG_PUBLIC_CONST_ACCESSOR(TYPE, NAME) \
-    private: \
+    protected: \
     TYPE NAME; \
     public: \
     TYPE get_##NAME() const { return NAME; } \
     TYPE get_##NAME() { return NAME; }
 
 #define GRUECONFIG_PUBLIC_CONSTREF_ACCESSOR(TYPE, NAME) \
-    private: \
+    protected: \
     TYPE NAME; \
     public: \
     const TYPE& get_##NAME() const { return NAME; } \
@@ -160,6 +160,8 @@ private:
     /* This is called from loadProfileParams */
     void loadExtruderParams(const Configuration& config);
     void loadExtrusionParams(const Configuration& config);
+    /* This is called from loadSlicingParams */
+    void loadSolidLayerParams(const Configuration& config);
     /* --END-- */
     
     //gcoder stuff
@@ -175,8 +177,14 @@ private:
     GRUECONFIG_PUBLIC_CONST_ACCESSOR(bool, doInfills)
     GRUECONFIG_PUBLIC_CONST_ACCESSOR(bool, doFanCommand)
     GRUECONFIG_PUBLIC_CONST_ACCESSOR(unsigned, fanLayer)
+    GRUECONFIG_PUBLIC_CONST_ACCESSOR(bool, doAnchor)
+    GRUECONFIG_PUBLIC_CONST_ACCESSOR(bool, doPutModelOnPlatform)
     GRUECONFIG_PUBLIC_CONST_ACCESSOR(bool, doPrintLayerMessages)
     GRUECONFIG_PUBLIC_CONST_ACCESSOR(bool, doPrintProgress)
+    GRUECONFIG_PUBLIC_CONST_ACCESSOR(Scalar, minLayerDuration)
+    GRUECONFIG_PUBLIC_CONST_ACCESSOR(Scalar, coarseness)
+    GRUECONFIG_PUBLIC_CONST_ACCESSOR(Scalar, preCoarseness)
+    GRUECONFIG_PUBLIC_CONST_ACCESSOR(Scalar, directionWeight)
     //slicer
     GRUECONFIG_PUBLIC_CONST_ACCESSOR(Scalar, layerH)
     GRUECONFIG_PUBLIC_CONST_ACCESSOR(Scalar, firstLayerZ)
@@ -185,6 +193,8 @@ private:
     GRUECONFIG_PUBLIC_CONST_ACCESSOR(Scalar, gridSpacingMultiplier)
     GRUECONFIG_PUBLIC_CONST_ACCESSOR(unsigned, nbOfShells)
     GRUECONFIG_PUBLIC_CONST_ACCESSOR(Scalar, layerWidthRatio)
+    GRUECONFIG_PUBLIC_CONST_ACCESSOR(Scalar, layerWidthMinimum)
+    GRUECONFIG_PUBLIC_CONST_ACCESSOR(Scalar, layerWidthMaximum)
     GRUECONFIG_PUBLIC_CONST_ACCESSOR(Scalar, insetDistanceMultiplier)
     GRUECONFIG_PUBLIC_CONST_ACCESSOR(unsigned, roofLayerCount)
     GRUECONFIG_PUBLIC_CONST_ACCESSOR(unsigned, floorLayerCount)
@@ -202,8 +212,7 @@ private:
     GRUECONFIG_PUBLIC_CONST_ACCESSOR(Scalar, supportDensity)
     //pather
     GRUECONFIG_PUBLIC_CONST_ACCESSOR(bool, doGraphOptimization)
-    GRUECONFIG_PUBLIC_CONST_ACCESSOR(Scalar, coarseness)
-    GRUECONFIG_PUBLIC_CONST_ACCESSOR(Scalar, directionWeight)
+    GRUECONFIG_PUBLIC_CONST_ACCESSOR(unsigned, iterativeEffort)
     //gantry
     GRUECONFIG_PUBLIC_CONST_ACCESSOR(Scalar, rapidMoveFeedRateXY)
     GRUECONFIG_PUBLIC_CONST_ACCESSOR(Scalar, rapidMoveFeedRateZ)
@@ -219,6 +228,46 @@ private:
 #undef GRUECONFIG_PUBLIC_CONST_ACCESSOR
 #undef GRUECONFIG_PUBLIC_CONSTREF_ACCESSOR
 };
+/// Properties common to a single hardware extruder
+class Extruder {
+public:
 
+    Extruder() {
+    }
+
+    Scalar feedCrossSectionArea() const;
+
+    bool isVolumetric() const {
+        return true;
+    };
+
+    Scalar feedDiameter;
+    Scalar nozzleDiameter;
+    unsigned char code;
+    int id;
+
+    Scalar retractDistance;
+    Scalar retractRate;
+    Scalar restartExtraDistance;
+
+    std::string firstLayerExtrusionProfile;
+    std::string insetsExtrusionProfile;
+    std::string infillsExtrusionProfile;
+    std::string outlinesExtrusionProfile;
+};
+
+/// Properties of an extrusion profile
+/// an extruder may have multiple extrusion profiles
+/// EG: large, fast, 'first layer'
+class Extrusion {
+public:
+
+    Extrusion() {}
+
+    Scalar crossSectionArea(Scalar height, Scalar width) const;
+
+    Scalar feedrate;
+    Scalar temperature;
+};
 }
 #endif /* CONFIGURATION_H_ */

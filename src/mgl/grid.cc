@@ -22,9 +22,10 @@ namespace mgl {
 
 
 using namespace std;
-using namespace libthing;
+
 
 const Scalar GRID_RANGE_TOL = 0.0;
+const Scalar GRID_CROSSING_COARSENESS = 0.0;
 
 ostream& operator <<(std::ostream &os, const ScalarRange &p) {
 	cout << "[" << p.min << ", " << p.max << "]";
@@ -43,12 +44,40 @@ void scalarRangesFromIntersections(const std::set<Scalar> &lineCuts, std::vector
 		Scalar intersection = *it;
 		if (inside) {
 			xEnd = intersection;
-			// gridSegments.push_back(LineSegment2(Vector2(xBegin,y), Vector2(xEnd,y)));
+			// gridSegments.push_back(LineSegment2(Point2Type(xBegin,y), Point2Type(xEnd,y)));
 			ranges.push_back(ScalarRange(xBegin, xEnd));
+            inside = false;
 		} else {
 			xBegin = intersection;
+            inside = true;
 		}
-		inside = !inside;
+	}
+
+	if (inside) {
+		// this is not good. xMax should be outside the object
+		GridException messup("Ray has been cast outside the model mesh.");
+
+	}
+}
+
+void scalarRangesFromIntersections(std::vector<Scalar> &lineCuts, std::vector<ScalarRange> &ranges) {
+    std::sort(lineCuts.begin(), lineCuts.end());
+	ranges.reserve(lineCuts.size());
+	bool inside = false;
+	Scalar xBegin = 0; // initial value is not used
+	Scalar xEnd = 0; // initial value is not used
+	for (std::vector<Scalar>::iterator it = lineCuts.begin(); 
+            it != lineCuts.end(); ++it) {
+		Scalar intersection = *it;
+		if (inside) {
+			xEnd = intersection;
+			// gridSegments.push_back(LineSegment2(Point2Type(xBegin,y), Point2Type(xEnd,y)));
+			ranges.push_back(ScalarRange(xBegin, xEnd));
+            inside = false;
+		} else {
+			xBegin = intersection;
+            inside = true;
+		}
 	}
 
 	if (inside) {
@@ -63,7 +92,7 @@ void rayCastAlongX(const std::list<Loop>& outlineLoops,
 		Scalar xMin,
 		Scalar xMax,
 		std::vector<ScalarRange> &ranges) {
-	std::set<Scalar> lineCuts;
+	std::vector<Scalar> lineCuts;
 
 	//iterate over every loop
 	for (std::list<Loop>::const_iterator j = outlineLoops.begin(); 
@@ -75,19 +104,28 @@ void rayCastAlongX(const std::list<Loop>& outlineLoops,
 			for(Loop::const_finite_cw_iterator iter(currentLoop.clockwiseFinite()); 
 					iter != currentLoop.clockwiseEnd(); 
 					++iter) {
-				LineSegment2 segment = currentLoop.segmentAfterPoint(iter);
+				Segment2Type segment = currentLoop.segmentAfterPoint(iter);
 				Scalar intersectionX, intersectionY;
-				if (segmentSegmentIntersection(xMin,
-						y,
-						xMax,
-						y,
-						segment.a.x,
-						segment.a.y,
-						segment.b.x,
-						segment.b.y,
-						intersectionX,
-						intersectionY)) {
-					lineCuts.insert(intersectionX);
+                intersectionY = y;
+                if(segment.a.y < y + GRID_CROSSING_COARSENESS) {
+                    if(segment.b.y > y - GRID_CROSSING_COARSENESS) {
+                        Scalar t = (y - segment.a.y) / 
+                                (segment.b.y - segment.a.y);
+                        intersectionX = t * (segment.b.x - segment.a.x) + segment.a.x;
+                    } else {
+                        continue;
+                    }
+                } else if(segment.a.y > y - GRID_CROSSING_COARSENESS) {    // segment.a.y > y
+                    if(segment.b.y < y + GRID_CROSSING_COARSENESS) {
+                        Scalar t = (y - segment.b.y) / 
+                                (segment.a.y - segment.b.y);
+                        intersectionX = t * (segment.a.x - segment.b.x) + segment.b.x;
+                    } else {
+                        continue;
+                    }
+                }
+				if (intersectionX >= xMin && intersectionX < xMax) {
+					lineCuts.push_back(intersectionX);
 				}
 			}
 		}
@@ -100,7 +138,7 @@ void rayCastAlongY(const std::list<Loop>& outlineLoops,
 		Scalar yMin,
 		Scalar yMax,
 		std::vector<ScalarRange> &ranges) {
-	std::set<Scalar> lineCuts;
+	std::vector<Scalar> lineCuts;
 
 	// iterate over every loop
 	for (std::list<Loop>::const_iterator j = outlineLoops.begin(); 
@@ -111,19 +149,28 @@ void rayCastAlongY(const std::list<Loop>& outlineLoops,
 			for (Loop::const_finite_cw_iterator it(currentLoop.clockwiseFinite()); 
 					it != currentLoop.clockwiseEnd(); 
 					it++) {
-				LineSegment2 segment = currentLoop.segmentAfterPoint(it);
+				Segment2Type segment = currentLoop.segmentAfterPoint(it);
 				Scalar intersectionX, intersectionY;
-				if (segmentSegmentIntersection(x,
-						yMin,
-						x,
-						yMax,
-						segment.a.x,
-						segment.a.y,
-						segment.b.x,
-						segment.b.y,
-						intersectionX,
-						intersectionY)) {
-					lineCuts.insert(intersectionY);
+                intersectionX = x;
+                if(segment.a.x < x + GRID_CROSSING_COARSENESS) {
+                    if(segment.b.x > x - GRID_CROSSING_COARSENESS) {
+                        Scalar t = (x - segment.a.x) / 
+                                (segment.b.x - segment.a.x);
+                        intersectionY = t * (segment.b.y - segment.a.y) + segment.a.y;
+                    } else {
+                        continue;
+                    }
+                } else if(segment.a.x > x - GRID_CROSSING_COARSENESS) {    // segment.a.y > y
+                    if(segment.b.x < x + GRID_CROSSING_COARSENESS) {
+                        Scalar t = (x - segment.b.x) / 
+                                (segment.a.x - segment.b.x);
+                        intersectionY = t * (segment.a.y - segment.b.y) + segment.b.y;
+                    } else {
+                        continue;
+                    }
+                }
+				if (intersectionY >= yMin && intersectionY < yMax) {
+					lineCuts.push_back(intersectionY);
 				}
 			}
 		}
@@ -162,7 +209,7 @@ void castRaysOnSliceAlongY(const std::list<Loop> &outlineLoops,
 }
 
 
-bool crossesOutlines(const LineSegment2 &seg,
+bool crossesOutlines(const Segment2Type &seg,
 					 const LoopList &outlines) {
 	for (LoopList::const_iterator loop = outlines.begin();
 		 loop != outlines.end(); loop++) {
@@ -171,8 +218,8 @@ bool crossesOutlines(const LineSegment2 &seg,
 		LoopPath lp(*loop, loop->clockwise(), loop->counterClockwise());
 		for (LoopPath::iterator point = lp.fromStart();
 			 point != lp.end(); point++) {
-			LineSegment2 border = loop->segmentAfterPoint(point);
-			Vector2 intersection;
+			Segment2Type border = loop->segmentAfterPoint(point);
+			Point2Type intersection;
 			if (segmentSegmentIntersection(seg, border, intersection))
 				return true;
 		}
@@ -199,11 +246,11 @@ void Grid::gridRangesToOpenPaths(const ScalarRangeTable &rays,
 			OpenPath &path = paths.back();
 
 			if (axis == X_AXIS) {
-				path.appendPoint(Vector2(range->min, *value));
-				path.appendPoint(Vector2(range->max, *value));
+				path.appendPoint(Point2Type(range->min, *value));
+				path.appendPoint(Point2Type(range->max, *value));
 			} else {
-				path.appendPoint(Vector2(*value, range->min));
-				path.appendPoint(Vector2(*value, range->max));
+				path.appendPoint(Point2Type(*value, range->min));
+				path.appendPoint(Point2Type(*value, range->max));
 			}
 		}
 	}
@@ -225,7 +272,7 @@ void pathsFromScalarRangesAlongAxis( const ScalarRangeTable &rays,	   // the ran
 	PointMap points_remaining;
 
 	//Convert ray ranges to segments and map endpoints
-	vector<Vector2> points;
+	vector<Point2Type> points;
 	for (size_t i = 0; i < rays.size(); i++) {
 		const vector<ScalarRange> &ray = rays[i];
 
@@ -239,11 +286,11 @@ void pathsFromScalarRangesAlongAxis( const ScalarRangeTable &rays,	   // the ran
 			assert(j->min != j->max);
 
 			if (axis == X_AXIS) {
-				points.push_back(Vector2(j->min, val));
-				points.push_back(Vector2(j->max, val));
+				points.push_back(Point2Type(j->min, val));
+				points.push_back(Point2Type(j->max, val));
 			} else {
-				points.push_back(Vector2(val, j->min));
-				points.push_back(Vector2(val, j->max));
+				points.push_back(Point2Type(val, j->min));
+				points.push_back(Point2Type(val, j->max));
 			}
 
 			points_remaining[points.size() - 2] = points.size() - 1;
@@ -272,7 +319,7 @@ void pathsFromScalarRangesAlongAxis( const ScalarRangeTable &rays,	   // the ran
 
 			int close = close_i->first;
 
-			Scalar dist = LineSegment2(points[endpoint], points[close])
+			Scalar dist = Segment2Type(points[endpoint], points[close])
 					.squaredLength();
 
 			if (dist < closest_dist) {
@@ -282,7 +329,7 @@ void pathsFromScalarRangesAlongAxis( const ScalarRangeTable &rays,	   // the ran
 		}
 
 
-		if (crossesOutlines(LineSegment2(points[endpoint], points[closest]),
+		if (crossesOutlines(Segment2Type(points[endpoint], points[closest]),
 							outlines)) {
 			if(currentPath.size() > 1)
 				paths.push_back(currentPath);

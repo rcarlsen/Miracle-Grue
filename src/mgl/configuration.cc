@@ -160,10 +160,15 @@ GrueConfig::GrueConfig()
         : defaultExtruder(INVALID_UINT), doOutlines(INVALID_BOOL), 
         doInsets(INVALID_BOOL), doInfills(INVALID_BOOL), 
         doFanCommand(INVALID_BOOL), fanLayer(INVALID_UINT), 
+        doAnchor(INVALID_BOOL), doPutModelOnPlatform(INVALID_BOOL), 
         doPrintLayerMessages(INVALID_BOOL), doPrintProgress(INVALID_BOOL), 
+        minLayerDuration(INVALID_SCALAR), 
+        coarseness(INVALID_SCALAR), preCoarseness(INVALID_SCALAR), 
+        directionWeight(INVALID_SCALAR), 
         layerH(INVALID_SCALAR), firstLayerZ(INVALID_SCALAR), 
         infillDensity(INVALID_SCALAR), nbOfShells(INVALID_UINT), 
-        layerWidthRatio(INVALID_SCALAR), 
+        layerWidthRatio(INVALID_SCALAR), layerWidthMinimum(INVALID_SCALAR), 
+        layerWidthMaximum(INVALID_SCALAR), 
         insetDistanceMultiplier(INVALID_SCALAR), roofLayerCount(INVALID_UINT), 
         floorLayerCount(INVALID_UINT), doRaft(INVALID_BOOL), 
         raftLayers(INVALID_UINT), raftBaseThickness(INVALID_SCALAR), 
@@ -171,7 +176,7 @@ GrueConfig::GrueConfig()
         raftModelSpacing(INVALID_SCALAR), raftDensity(INVALID_SCALAR), 
         doSupport(INVALID_BOOL), supportMargin(INVALID_SCALAR), 
         supportDensity(INVALID_SCALAR), doGraphOptimization(INVALID_BOOL), 
-        coarseness(INVALID_SCALAR), directionWeight(INVALID_SCALAR), 
+        iterativeEffort(INVALID_UINT), 
         rapidMoveFeedRateXY(INVALID_SCALAR), rapidMoveFeedRateZ(INVALID_SCALAR), 
         useEaxis(INVALID_BOOL), scalingFactor(INVALID_BOOL), 
         startingX(INVALID_SCALAR), startingY(INVALID_SCALAR), 
@@ -196,26 +201,34 @@ void GrueConfig::loadFromFile(const Configuration& config) {
 void GrueConfig::loadSlicingParams(const Configuration& config) {
     coarseness = (doubleCheck(
             config["coarseness"], "coarseness"));
+    preCoarseness = (doubleCheck(
+            config["preCoarseness"], "preCoarseness"));
+    directionWeight = doubleCheck(config["directionWeight"],
+            "directionWeight");
     layerH = (doubleCheck(
             config["layerHeight"], "layerHeight"));
     firstLayerZ = doubleCheck(config["bedZOffset"], 
             "bedZOffset");
+    doPutModelOnPlatform = boolCheck(config["doPutModelOnPlatform"], 
+            "doPutModelOnPlatform", true);
     infillDensity = doubleCheck(config["infillDensity"],
             "infillDensity");
     gridSpacingMultiplier = doubleCheck(config["gridSpacingMultiplier"],
             "gridSpacingMultiplier", 0.92);
     nbOfShells = uintCheck(config["numberOfShells"],
             "numberOfShells");
+    layerWidthMinimum = doubleCheck(config["layerWidthMinimum"],
+            "layerWidthMinimum");
+    layerWidthMaximum = doubleCheck(config["layerWidthMaximum"],
+            "layerWidthMaximum", 1.0);
     layerWidthRatio = doubleCheck(config["layerWidthRatio"],
             "layerWidthRatio");
+    layerWidthRatio = std::min(std::max(layerWidthRatio * layerH, 
+            layerWidthMinimum), layerWidthMaximum)/layerH;
     insetDistanceMultiplier =
             doubleCheck(config["insetDistanceMultiplier"],
             "insetDistanceMultiplier");
-    roofLayerCount =
-            uintCheck(config["roofLayerCount"], "roofLayerCount");
-    floorLayerCount =
-            uintCheck(config["floorLayerCount"], "floorLayerCount");
-    
+    loadSolidLayerParams(config);
 }
 void GrueConfig::loadGantryParams(const Configuration& config) {
     rapidMoveFeedRateXY = (doubleCheck(
@@ -244,7 +257,7 @@ void GrueConfig::loadGcodeParams(const Configuration& config) {
             "endGcode", "");
     doOutlines = boolCheck(config["doOutlines"],
             "doOutlines", false);
-    doInsets = boolCheck(config["insets"],
+    doInsets = boolCheck(config["doInsets"],
             "doInsets", true);
     doInfills = boolCheck(config["doInfills"],
             "doInfills", true);
@@ -254,12 +267,17 @@ void GrueConfig::loadGcodeParams(const Configuration& config) {
         fanLayer = uintCheck(config["fanLayer"],
                 "fanLayer");
     }
+    doAnchor = boolCheck(
+            config["doAnchor"], "doAnchor", true);
     doPrintLayerMessages = boolCheck(
             config["printLayerMessages"],
             "printLayerMessages", false);
     doPrintProgress = boolCheck(
             config["doPrintProgress"],
             "doPrintProgress", false);
+    minLayerDuration = doubleCheck(
+            config["minLayerDuration"], 
+            "minLayerDuration", 0);
     useEaxis = (boolCheck(config["useEAxis"],
             "useEAxis", false));
 }
@@ -285,8 +303,8 @@ void GrueConfig::loadSupportParams(const Configuration& config) {
             config["supportDensity"], "supportDensity");
 }
 void GrueConfig::loadPathingParams(const Configuration& config) {
-    directionWeight = doubleCheck(config["directionWeight"],
-            "directionWeight");
+    iterativeEffort = uintCheck(config["iterativeEffort"], 
+            "iterativeEffort", 999);
 }
 void GrueConfig::loadProfileParams(const Configuration& config) {
     loadExtruderParams(config);
@@ -360,6 +378,24 @@ void GrueConfig::loadExtrusionParams(const Configuration& config) {
 
         extrusionProfiles.insert(pair<std::string,
                 Extrusion > (profileName, extrusion));
+    }
+}
+void GrueConfig::loadSolidLayerParams(const Configuration& config) {
+    try {
+        roofLayerCount =
+                uintCheck(config["roofLayerCount"], "roofLayerCount");
+    } catch (const ConfigException& ce) {
+        Scalar roofThickness = doubleCheck(config["roofThickness"], 
+                "roofThickness");
+        roofLayerCount = static_cast<unsigned>(ceil(roofThickness / layerH));
+    }
+    try {
+        floorLayerCount =
+                uintCheck(config["floorLayerCount"], "floorLayerCount");
+    } catch (const ConfigException& ce) {
+        Scalar floorThickness = doubleCheck(config["floorThickness"], 
+                "floorThickness");
+        floorLayerCount = static_cast<unsigned>(ceil(floorThickness / layerH));
     }
 }
 
